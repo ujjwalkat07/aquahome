@@ -6,8 +6,25 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Allow public login screens to pass through
-    if (path === "/admin/login" || path === "/delivery/login" || path === "/login") {
+    // Redirect authenticated users trying to access landing page or login pages
+    if (token) {
+      const role = token.role;
+      if (path === "/admin/login" || path === "/delivery/login" || path === "/login" || path === "/") {
+        if (role === "ADMIN") {
+          return NextResponse.redirect(new URL("/admin", req.url));
+        } else if (role === "DELIVERY") {
+          return NextResponse.redirect(new URL("/delivery/orders", req.url));
+        } else if (role === "CUSTOMER") {
+          if (token.firstLogin) {
+            return NextResponse.redirect(new URL("/user/profile?firstLogin=true", req.url));
+          }
+          return NextResponse.redirect(new URL("/user/order/new", req.url));
+        }
+      }
+    }
+
+    // Allow public pages/login screens to pass through when not authenticated
+    if (path === "/admin/login" || path === "/delivery/login" || path === "/login" || path === "/") {
       return NextResponse.next();
     }
 
@@ -16,9 +33,10 @@ export default withAuth(
         return NextResponse.redirect(new URL("/admin/login", req.url));
       } else if (path.startsWith("/delivery")) {
         return NextResponse.redirect(new URL("/delivery/login", req.url));
-      } else {
+      } else if (path.startsWith("/user")) {
         return NextResponse.redirect(new URL("/login", req.url));
       }
+      return NextResponse.next();
     }
 
     const role = token.role;
@@ -48,5 +66,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/user/:path*", "/admin/:path*", "/delivery/:path*"],
+  matcher: ["/", "/login", "/user/:path*", "/admin/:path*", "/delivery/:path*"],
 };

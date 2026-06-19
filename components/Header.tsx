@@ -200,7 +200,13 @@ export default function Header({ title }: { title: string }) {
               </span>
             </Link>
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() => {
+                const role = (session?.user as any)?.role;
+                let callbackUrl = "/login";
+                if (role === "ADMIN") callbackUrl = "/admin/login";
+                else if (role === "DELIVERY") callbackUrl = "/delivery/login";
+                signOut({ callbackUrl });
+              }}
               className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition"
               aria-label="Logout"
             >
