@@ -98,6 +98,9 @@ export async function POST(req: Request) {
       if (item.quantity <= 0) {
         return NextResponse.json({ error: "Quantity must be greater than zero." }, { status: 400 });
       }
+      if (item.quantity > product.stock) {
+        return NextResponse.json({ error: `Insufficient stock for product "${product.name}" (${product.size}). Only ${product.stock} left.` }, { status: 400 });
+      }
       totalAmount += product.pricePerUnit * item.quantity;
     }
 
@@ -119,25 +122,30 @@ export async function POST(req: Request) {
       // Create Order Items and update inventory
       const orderItemsData = [];
       for (const item of items) {
-        const product = productsMap.get(item.productId)!;
+        // Fetch current product details inside transaction to prevent concurrency bugs
+        const dbProduct = await tx.product.findUnique({
+          where: { id: item.productId }
+        });
+        if (!dbProduct || !dbProduct.isAvailable || dbProduct.stock < item.quantity) {
+          throw new Error(`Insufficient stock for product "${dbProduct?.name || item.productId}".`);
+        }
 
         // Create item
         orderItemsData.push(
           tx.orderItem.create({
             data: {
               orderId: order.id,
-              productId: product.id,
+              productId: dbProduct.id,
               quantity: item.quantity,
-              unitPrice: product.pricePerUnit
+              unitPrice: dbProduct.pricePerUnit
             }
           })
         );
 
         // Update product stock
-        const newStock = Math.max(0, product.stock - item.quantity);
         await tx.product.update({
-          where: { id: product.id },
-          data: { stock: newStock }
+          where: { id: dbProduct.id },
+          data: { stock: dbProduct.stock - item.quantity }
         });
       }
 

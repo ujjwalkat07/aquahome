@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     const { notificationId } = body;
 
     if (notificationId) {
-      await prisma.notification.update({
+      await prisma.notification.updateMany({
         where: { id: notificationId, userId: currentUserId },
         data: { isRead: true }
       });

@@ -8,6 +8,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 
 // Load react-qr-scanner dynamically with SSR disabled to prevent Node compilation errors
+// @ts-ignore
 const QrReader = dynamic(() => import("react-qr-scanner"), {
   ssr: false,
   loading: () => (
@@ -16,7 +17,7 @@ const QrReader = dynamic(() => import("react-qr-scanner"), {
       <span className="text-xs text-slate-500 mt-2 font-medium">Initializing camera module...</span>
     </div>
   )
-});
+}) as any;
 
 interface ScannedOrderDetails {
   id: string;

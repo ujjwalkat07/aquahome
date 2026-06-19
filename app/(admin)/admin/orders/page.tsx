@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Loader2, ShoppingBag, Truck, CheckCircle, Clock, XCircle, User, Calendar, MapPin, Eye, Search } from "lucide-react";
+import { Loader2, ShoppingBag, Truck, CheckCircle, Clock, XCircle, User, Calendar, MapPin, Eye, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Product {
@@ -308,6 +308,7 @@ export default function AdminOrders() {
                             className="p-1.5 rounded-lg border border-red-100 dark:border-red-950 hover:bg-red-50 text-red-500 transition"
                             title="Cancel order"
                           >
+                            <XCircle size={15} />
                           </button>
                         )}
                       </td>
@@ -337,6 +338,7 @@ export default function AdminOrders() {
                   onClick={() => setSelectedOrder(null)}
                   className="p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700"
                 >
+                  <X size={18} />
                 </button>
               </div>
 
