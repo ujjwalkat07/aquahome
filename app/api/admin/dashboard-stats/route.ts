@@ -63,12 +63,12 @@ export async function GET() {
     const revenueLastMonth = paidLastMonth.reduce((sum, p) => sum + p.amount, 0);
 
     // 5. Low stock alerts
-    const lowStockProducts = await prisma.product.findMany({
-      where: {
-        isAvailable: true,
-        stock: { lte: prisma.product.fields.lowStockThreshold }
-      }
+    const allAvailableProducts = await prisma.product.findMany({
+      where: { isAvailable: true }
     });
+    const lowStockProducts = allAvailableProducts.filter(
+      (p) => p.stock <= p.lowStockThreshold
+    );
 
     return NextResponse.json({
       activeOrdersToday,

@@ -28,7 +28,7 @@ export default function Header({ title }: { title: string }) {
     try {
       const res = await fetch("/api/notifications");
       if (res.ok) {
-        const data = await res.ok ? await res.json() : [];
+        const data = await res.json();
         setNotifications(data);
       }
     } catch (error) {

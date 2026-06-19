@@ -17,12 +17,8 @@ export async function sendEmail({ to, subject, text, html }: { to: string; subje
     const transporter = nodemailer.createTransport({
       host,
       port,
-      auth: {
-        host,
-        port,
-        secure: port === 465,
-        auth: { user, pass },
-      } as any,
+      secure: port === 465,
+      auth: { user, pass },
     });
 
     await transporter.sendMail({

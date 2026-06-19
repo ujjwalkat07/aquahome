@@ -76,6 +76,20 @@ export async function PATCH(
 
     // Handle payments adjustments on cancel
     if (status === "CANCELLED") {
+      // Restore product stock
+      const orderWithItems = await prisma.order.findUnique({
+        where: { id },
+        include: { orderItems: true }
+      });
+      if (orderWithItems) {
+        for (const item of orderWithItems.orderItems) {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } }
+          });
+        }
+      }
+
       await prisma.payment.updateMany({
         where: { orderId: id },
         data: {

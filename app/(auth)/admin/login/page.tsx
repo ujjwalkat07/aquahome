@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -48,7 +48,7 @@ export default function AdminLogin() {
         const role = session?.user?.role;
 
         if (role !== "ADMIN") {
-          await signIn("credentials", { redirect: false });
+          await signOut({ redirect: false });
           toast.error("Unauthorized. Admin privileges required.");
           return;
         }

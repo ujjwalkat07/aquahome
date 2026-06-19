@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -52,7 +52,7 @@ export default function CustomerLogin() {
 
         if (role !== "CUSTOMER") {
           // Sign out unauthorized role from this dashboard
-          await signIn("credentials", { redirect: false });
+          await signOut({ redirect: false });
           toast.error("Unauthorized. Please use the appropriate login portal.");
           return;
         }

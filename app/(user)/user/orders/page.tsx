@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Loader2, ShoppingBag, ChevronDown, ChevronUp, Calendar, MapPin, Clock, QrCode as QrIcon, AlertCircle } from "lucide-react";
 import QRCode from "qrcode";
@@ -65,7 +66,7 @@ function OrderQRCode({ text }: { text: string }) {
   return (
     <div className="flex flex-col items-center gap-1.5 p-3 bg-white dark:bg-white rounded-xl shadow-inner border border-slate-200">
       <canvas ref={canvasRef} />
-      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider select-all select-none">
+      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider select-none">
         Show to Delivery Partner
       </span>
     </div>
@@ -74,6 +75,7 @@ function OrderQRCode({ text }: { text: string }) {
 
 export default function MyOrders() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
