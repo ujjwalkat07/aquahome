@@ -42,13 +42,7 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token, req }) => {
-        const path = req.nextUrl.pathname;
-        if (path === "/admin/login" || path === "/delivery/login" || path === "/login") {
-          return true;
-        }
-        return !!token;
-      },
+      authorized: () => true,
     },
   }
 );
