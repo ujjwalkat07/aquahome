@@ -26,6 +26,7 @@
     "react-hook-form": "^7.78.0",
     "react-hot-toast": "^2.6.0",
     "react-qr-scanner": "^1.0.0-alpha.11",
+    "turbo": "^2.9.18",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
