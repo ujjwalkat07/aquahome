@@ -47,13 +47,17 @@ export default function AdminLogin() {
         const session = await sessionRes.json();
         const role = session?.user?.role;
 
-        if (role !== "ADMIN") {
+        if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
           await signOut({ redirect: false });
           toast.error("Unauthorized. Admin privileges required.");
           return;
         }
 
-        router.push("/admin");
+        if (role === "SUPER_ADMIN") {
+          router.push("/super-admin");
+        } else {
+          router.push("/admin");
+        }
       }
     } catch (err) {
       toast.error("An unexpected error occurred. Please try again.");

@@ -8,6 +8,7 @@ async function main() {
   const adminPassword = await bcrypt.hash('admin123', 10);
   const deliveryPassword = await bcrypt.hash('delivery123', 10);
   const customerPassword = await bcrypt.hash('customer123', 10);
+  const superAdminPassword = await bcrypt.hash('superadmin123', 10);
 
   // Clean DB
   console.log('Cleaning up database...');
@@ -21,6 +22,19 @@ async function main() {
 
   // Seed Users
   console.log('Seeding users...');
+  const superadmin = await prisma.user.create({
+    data: {
+      name: 'AquaHome Super Admin',
+      email: 'superadmin@aquahome.com',
+      phone: '1112223333',
+      address: 'AquaHome Headquarters, HQ 1',
+      pincode: '700091',
+      role: 'SUPER_ADMIN',
+      passwordHash: superAdminPassword,
+      firstLogin: false,
+    }
+  });
+
   const admin = await prisma.user.create({
     data: {
       name: 'AquaHome Admin',

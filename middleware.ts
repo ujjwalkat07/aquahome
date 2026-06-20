@@ -12,6 +12,8 @@ export default withAuth(
       if (path === "/admin/login" || path === "/delivery/login" || path === "/login" || path === "/") {
         if (role === "ADMIN") {
           return NextResponse.redirect(new URL("/admin", req.url));
+        } else if (role === "SUPER_ADMIN") {
+          return NextResponse.redirect(new URL("/super-admin", req.url));
         } else if (role === "DELIVERY") {
           return NextResponse.redirect(new URL("/delivery/orders", req.url));
         } else if (role === "CUSTOMER") {
@@ -29,7 +31,9 @@ export default withAuth(
     }
 
     if (!token) {
-      if (path.startsWith("/admin")) {
+      if (path.startsWith("/super-admin")) {
+        return NextResponse.redirect(new URL("/admin/login", req.url));
+      } else if (path.startsWith("/admin")) {
         return NextResponse.redirect(new URL("/admin/login", req.url));
       } else if (path.startsWith("/delivery")) {
         return NextResponse.redirect(new URL("/delivery/login", req.url));
@@ -41,6 +45,9 @@ export default withAuth(
 
     const role = token.role;
 
+    if (path.startsWith("/super-admin") && role !== "SUPER_ADMIN") {
+      return NextResponse.redirect(new URL("/admin/login", req.url));
+    }
     if (path.startsWith("/admin") && role !== "ADMIN") {
       return NextResponse.redirect(new URL("/admin/login", req.url));
     }
@@ -66,5 +73,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/", "/login", "/user/:path*", "/admin/:path*", "/delivery/:path*"],
+  matcher: ["/", "/login", "/user/:path*", "/admin/:path*", "/delivery/:path*", "/super-admin/:path*"],
 };

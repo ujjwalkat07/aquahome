@@ -91,6 +91,7 @@ export default function Header({ title }: { title: string }) {
   const getProfileLink = () => {
     const role = (session?.user as any)?.role;
     if (role === "ADMIN") return "/admin";
+    if (role === "SUPER_ADMIN") return "/super-admin";
     if (role === "DELIVERY") return "/delivery/orders";
     return "/user/profile";
   };
@@ -203,7 +204,7 @@ export default function Header({ title }: { title: string }) {
               onClick={() => {
                 const role = (session?.user as any)?.role;
                 let callbackUrl = "/login";
-                if (role === "ADMIN") callbackUrl = "/admin/login";
+                if (role === "ADMIN" || role === "SUPER_ADMIN") callbackUrl = "/admin/login";
                 else if (role === "DELIVERY") callbackUrl = "/delivery/login";
                 signOut({ callbackUrl });
               }}

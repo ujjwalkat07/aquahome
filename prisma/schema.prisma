@@ -8,9 +8,10 @@ generator client {
 }
 
 enum Role {
-  CUSTOMER
+  SUPER_ADMIN
   ADMIN
   DELIVERY
+  CUSTOMER
 }
 
 enum OrderStatus {
