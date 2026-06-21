@@ -22,7 +22,8 @@ import {
   Activity,
   UserCheck,
   Mail,
-  Lock
+  Lock,
+  Pencil
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -50,12 +51,33 @@ interface Stats {
 }
 
 const adminSchema = zod.object({
+  id: zod.string().optional(),
   name: zod.string().min(2, "Name must be at least 2 characters"),
   email: zod.string().email("Please enter a valid email address"),
   phone: zod.string().min(10, "Phone number must be at least 10 digits"),
   address: zod.string().min(5, "Address must be complete"),
   pincode: zod.string().min(4, "Pincode is too short"),
-  password: zod.string().min(6, "Password must be at least 6 characters"),
+  password: zod.string().optional().or(zod.literal("")),
+}).superRefine((data, ctx) => {
+  // If editing, password is optional but if provided it must be at least 6 characters
+  if (data.id) {
+    if (data.password && data.password.length > 0 && data.password.length < 6) {
+      ctx.addIssue({
+        code: zod.ZodIssueCode.custom,
+        message: "Password must be at least 6 characters",
+        path: ["password"],
+      });
+    }
+  } else {
+    // If creating, password is required and must be at least 6 characters
+    if (!data.password || data.password.length < 6) {
+      ctx.addIssue({
+        code: zod.ZodIssueCode.custom,
+        message: "Password must be at least 6 characters",
+        path: ["password"],
+      });
+    }
+  }
 });
 
 type AdminForm = zod.infer<typeof adminSchema>;
@@ -72,6 +94,7 @@ export default function SuperAdminDashboard() {
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<BusinessAdmin | null>(null);
   const [createdCredentials, setCreatedCredentials] = useState<{
     name: string;
     email: string;
@@ -119,29 +142,69 @@ export default function SuperAdminDashboard() {
     }
   }, [session]);
 
-  const handleCreateAdmin = async (data: AdminForm) => {
+  const handleEditClick = (admin: BusinessAdmin) => {
+    setEditingAdmin(admin);
+    setValue("id", admin.id);
+    setValue("name", admin.name);
+    setValue("email", admin.email);
+    setValue("phone", admin.phone);
+    setValue("address", admin.address);
+    setValue("pincode", admin.pincode);
+    setValue("password", "");
+    setShowAddModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setEditingAdmin(null);
+    reset({
+      id: "",
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      pincode: "",
+      password: ""
+    });
+  };
+
+  const handleSaveAdmin = async (data: AdminForm) => {
     setSubmitting(true);
     try {
+      const payload: any = { ...data };
+      if (editingAdmin) {
+        payload.id = editingAdmin.id;
+        if (!payload.password || payload.password.trim() === "") {
+          delete payload.password;
+        }
+      } else {
+        delete payload.id;
+      }
+
       const res = await fetch("/api/super-admin/admins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        toast.success(`Business Admin "${data.name}" created!`);
-        setShowAddModal(false);
-        // Save the details to display in the credentials presentation screen
-        setCreatedCredentials({
-          name: data.name,
-          email: data.email,
-          passwordHash: data.password
-        });
-        reset();
-        fetchData();
+        if (editingAdmin) {
+          toast.success(`Business Admin "${data.name}" updated!`);
+          handleCloseModal();
+          fetchData();
+        } else {
+          toast.success(`Business Admin "${data.name}" created!`);
+          setCreatedCredentials({
+            name: data.name,
+            email: data.email,
+            passwordHash: data.password || ""
+          });
+          handleCloseModal();
+          fetchData();
+        }
       } else {
         const errData = await res.json();
-        toast.error(errData.error || "Failed to create business admin.");
+        toast.error(errData.error || `Failed to ${editingAdmin ? "update" : "create"} business admin.`);
       }
     } catch (err) {
       toast.error("Network error. Please try again.");
@@ -238,7 +301,19 @@ export default function SuperAdminDashboard() {
           </p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setEditingAdmin(null);
+            reset({
+              id: "",
+              name: "",
+              email: "",
+              phone: "",
+              address: "",
+              pincode: "",
+              password: ""
+            });
+            setShowAddModal(true);
+          }}
           className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-sky-500 text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 transition flex items-center gap-1.5 self-start md:self-auto"
         >
           <Plus size={16} /> Create Business Admin
@@ -382,16 +457,24 @@ export default function SuperAdminDashboard() {
                       </span>
                     </td>
                     <td className="p-3.5 text-right">
-                      <button
-                        onClick={() => toggleAdminStatus(admin)}
-                        className={`px-3 py-1.5 rounded-lg border text-[10px] font-extrabold tracking-wider uppercase transition ${
-                          admin.isActive
-                            ? "border-red-100 dark:border-red-950 bg-red-50/20 hover:bg-red-50 text-red-500"
-                            : "border-green-100 dark:border-green-950 bg-green-50/20 hover:bg-green-50 text-green-600 dark:text-green-400"
-                        }`}
-                      >
-                        {admin.isActive ? "Deactivate" : "Activate"}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleEditClick(admin)}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-sky-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-[10px] font-extrabold tracking-wider uppercase transition text-slate-600 dark:text-slate-400 flex items-center gap-1"
+                        >
+                          <Pencil size={10} /> Edit
+                        </button>
+                        <button
+                          onClick={() => toggleAdminStatus(admin)}
+                          className={`px-3 py-1.5 rounded-lg border text-[10px] font-extrabold tracking-wider uppercase transition ${
+                            admin.isActive
+                              ? "border-red-100 dark:border-red-950 bg-red-50/20 hover:bg-red-50 text-red-500"
+                              : "border-green-100 dark:border-green-950 bg-green-50/20 hover:bg-green-50 text-green-600 dark:text-green-400"
+                          }`}
+                        >
+                          {admin.isActive ? "Deactivate" : "Activate"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -466,20 +549,17 @@ export default function SuperAdminDashboard() {
             
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-sky-950 pb-2">
               <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100">
-                Register Business Administrator
+                {editingAdmin ? "Edit Business Administrator" : "Register Business Administrator"}
               </h3>
               <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  reset();
-                }}
+                onClick={handleCloseModal}
                 className="p-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(handleCreateAdmin)} className="space-y-3.5">
+            <form onSubmit={handleSubmit(handleSaveAdmin)} className="space-y-3.5">
               
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">Full Name</label>
@@ -544,7 +624,9 @@ export default function SuperAdminDashboard() {
 
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">Admin Password</label>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">
+                      {editingAdmin ? "Change Password (Optional)" : "Admin Password"}
+                    </label>
                     <button
                       type="button"
                       onClick={generateRandomPassword}
@@ -557,7 +639,7 @@ export default function SuperAdminDashboard() {
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                     <input
                       type="text"
-                      placeholder="Min 6 characters"
+                      placeholder={editingAdmin ? "Leave blank to keep current" : "Min 6 characters"}
                       {...register("password")}
                       className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-blue-500 outline-none transition dark:text-slate-200 font-mono"
                     />
@@ -587,10 +669,7 @@ export default function SuperAdminDashboard() {
               <div className="flex gap-3 pt-3 border-t border-slate-100 dark:border-sky-950">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    reset();
-                  }}
+                  onClick={handleCloseModal}
                   className="flex-1 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-50 border border-slate-100 dark:border-sky-950 rounded-xl transition"
                 >
                   Cancel
@@ -600,7 +679,7 @@ export default function SuperAdminDashboard() {
                   className="flex-1 py-2.5 text-xs font-bold bg-gradient-to-r from-blue-600 to-sky-500 text-white rounded-xl shadow transition flex items-center justify-center gap-1.5"
                   disabled={submitting}
                 >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Administrator"}
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (editingAdmin ? "Update Administrator" : "Save Administrator")}
                 </button>
               </div>
 

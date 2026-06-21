@@ -75,6 +75,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Invalid target user" }, { status: 400 });
       }
 
+      // Check email uniqueness if email is changed
+      if (email && email !== targetUser.email) {
+        const existingEmail = await prisma.user.findUnique({
+          where: { email }
+        });
+        if (existingEmail) {
+          return NextResponse.json({ error: "Email already exists" }, { status: 400 });
+        }
+      }
+
       let updateData: any = {
         name,
         email,
