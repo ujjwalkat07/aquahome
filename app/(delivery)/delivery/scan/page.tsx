@@ -171,6 +171,10 @@ export default function QRScanner() {
                   delay={300}
                   onError={handleError}
                   onScan={handleScan}
+                  facingMode="rear"
+                  constraints={{
+                    video: { facingMode: "environment" }
+                  }}
                   style={{ width: "100%", height: "260px" }}
                 />
               </div>
