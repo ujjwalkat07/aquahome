@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,28 +27,69 @@ export async function GET(req: Request) {
         role: true,
         isActive: true,
         firstLogin: true,
-        createdAt: true,
-        orders: {
-          select: { id: true }
-        }
+        createdAt: true
       },
       orderBy: { createdAt: "desc" }
     });
 
-    // Map database user to returned structure
-    const processedAdmins = admins.map(admin => ({
-      id: admin.id,
-      name: admin.name,
-      email: admin.email,
-      phone: admin.phone,
-      address: admin.address,
-      pincode: admin.pincode,
-      role: admin.role,
-      isActive: admin.isActive,
-      firstLogin: admin.firstLogin,
-      createdAt: admin.createdAt,
-      totalOrdersManaged: admin.orders.length
-    }));
+    const processedAdmins = await Promise.all(
+      admins.map(async (admin) => {
+        // Query delivery partners with matching pincode
+        const totalDeliveryBoys = await prisma.user.count({
+          where: {
+            role: "DELIVERY",
+            pincode: admin.pincode
+          }
+        });
+
+        // Query customers with matching pincode
+        const totalCustomers = await prisma.user.count({
+          where: {
+            role: "CUSTOMER",
+            pincode: admin.pincode
+          }
+        });
+
+        // Query orders with matching pincode
+        const totalOrders = await prisma.order.count({
+          where: {
+            deliveryPincode: admin.pincode,
+            status: { not: "CANCELLED" }
+          }
+        });
+
+        // Query revenue for orders with matching pincode
+        const payments = await prisma.payment.findMany({
+          where: {
+            status: "PAID",
+            order: {
+              deliveryPincode: admin.pincode
+            }
+          },
+          select: {
+            amount: true
+          }
+        });
+        const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+
+        return {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email,
+          phone: admin.phone,
+          address: admin.address,
+          pincode: admin.pincode,
+          role: admin.role,
+          isActive: admin.isActive,
+          firstLogin: admin.firstLogin,
+          createdAt: admin.createdAt,
+          totalDeliveryBoys,
+          totalCustomers,
+          totalOrders,
+          totalRevenue
+        };
+      })
+    );
 
     return NextResponse.json(processedAdmins);
   } catch (error: any) {

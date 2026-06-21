@@ -23,7 +23,8 @@ import {
   UserCheck,
   Mail,
   Lock,
-  Pencil
+  Pencil,
+  Download
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -38,7 +39,10 @@ interface BusinessAdmin {
   isActive: boolean;
   firstLogin: boolean;
   createdAt: string;
-  totalOrdersManaged: number;
+  totalDeliveryBoys: number;
+  totalCustomers: number;
+  totalOrders: number;
+  totalRevenue: number;
 }
 
 interface Stats {
@@ -102,6 +106,18 @@ export default function SuperAdminDashboard() {
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Business details state
+  const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [detailsData, setDetailsData] = useState<{
+    admin: any;
+    customers: any[];
+    deliveryPartners: any[];
+    orders: any[];
+  } | null>(null);
+  const [activeDetailsTab, setActiveDetailsTab] = useState<"overview" | "customers" | "delivery" | "orders">("overview");
 
   const {
     register,
@@ -249,6 +265,75 @@ export default function SuperAdminDashboard() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleExportCSV = () => {
+    if (admins.length === 0) {
+      toast.error("No data available to export.");
+      return;
+    }
+
+    const headers = [
+      "Name",
+      "Email",
+      "Phone",
+      "Physical Address",
+      "Pincode (Region)",
+      "Status",
+      "Joined Date",
+      "Total Customers",
+      "Total Delivery Partners",
+      "Total Orders",
+      "Total Revenue ($)"
+    ];
+
+    const rows = admins.map(admin => [
+      `"${admin.name.replace(/"/g, '""')}"`,
+      `"${admin.email.replace(/"/g, '""')}"`,
+      `"${admin.phone.replace(/"/g, '""')}"`,
+      `"${admin.address.replace(/"/g, '""')}"`,
+      `"${admin.pincode.replace(/"/g, '""')}"`,
+      admin.isActive ? "Active" : "Deactivated",
+      new Date(admin.createdAt).toLocaleDateString(),
+      admin.totalCustomers,
+      admin.totalDeliveryBoys,
+      admin.totalOrders,
+      admin.totalRevenue.toFixed(2)
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `business_owners_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("CSV report downloaded successfully!");
+  };
+
+  const handleViewDetails = async (adminId: string) => {
+    setSelectedAdminId(adminId);
+    setShowDetailsModal(true);
+    setLoadingDetails(true);
+    setActiveDetailsTab("overview");
+    try {
+      const res = await fetch(`/api/super-admin/admins/${adminId}/details`);
+      if (res.ok) {
+        const data = await res.json();
+        setDetailsData(data);
+      } else {
+        toast.error("Failed to load business details.");
+        setShowDetailsModal(false);
+      }
+    } catch (err) {
+      toast.error("Error loading business details.");
+      setShowDetailsModal(false);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
   const generateRandomPassword = () => {
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
     let password = "";
@@ -391,6 +476,12 @@ export default function SuperAdminDashboard() {
           </h3>
           
           <div className="flex flex-col sm:flex-row gap-2.5">
+            <button
+              onClick={handleExportCSV}
+              className="px-3 py-2 bg-emerald-600 dark:bg-emerald-700 hover:bg-emerald-500 dark:hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+            >
+              <Download size={14} /> Export CSV
+            </button>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
               <input
@@ -419,9 +510,12 @@ export default function SuperAdminDashboard() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/40 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-sky-950">
-                <th className="p-3.5">Name / Contact</th>
-                <th className="p-3.5">Physical Address / region</th>
-                <th className="p-3.5">Joined Date</th>
+                <th className="p-3.5">Business Name</th>
+                <th className="p-3.5">Pincode Region</th>
+                <th className="p-3.5 text-center">Customers</th>
+                <th className="p-3.5 text-center">Delivery Team</th>
+                <th className="p-3.5 text-center">Orders</th>
+                <th className="p-3.5 text-right">Revenue</th>
                 <th className="p-3.5">Status</th>
                 <th className="p-3.5 text-right">Access Management</th>
               </tr>
@@ -429,34 +523,48 @@ export default function SuperAdminDashboard() {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-950 text-xs">
               {filteredAdmins.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-500 italic">
+                  <td colSpan={8} className="p-8 text-center text-slate-400 dark:text-slate-500 italic">
                     No administrators found matching filter conditions.
                   </td>
                 </tr>
               ) : (
                 filteredAdmins.map((admin) => (
-                  <tr key={admin.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
-                    <td className="p-3.5">
-                      <p className="font-bold text-slate-800 dark:text-slate-200">{admin.name}</p>
+                  <tr
+                    key={admin.id}
+                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 cursor-pointer"
+                    onClick={() => handleViewDetails(admin.id)}
+                  >
+                    <td className="p-3.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleViewDetails(admin.id)}
+                        className="font-bold text-slate-800 dark:text-slate-200 hover:underline text-left"
+                      >
+                        {admin.name}
+                      </button>
                       <p className="text-[10px] text-slate-400">{admin.email} • {admin.phone}</p>
                     </td>
                     <td className="p-3.5">
-                      <p className="text-slate-700 dark:text-slate-300 font-medium">{admin.address}</p>
-                      <p className="text-[10px] text-slate-400">Pincode: {admin.pincode}</p>
+                      <p className="text-slate-700 dark:text-slate-300 font-medium">{admin.pincode}</p>
+                      <p className="text-[10px] text-slate-400 truncate max-w-[150px]">{admin.address}</p>
                     </td>
-                    <td className="p-3.5 text-slate-500 font-medium">
-                      {new Date(admin.createdAt).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
+                    <td className="p-3.5 text-center font-bold text-slate-700 dark:text-slate-300">
+                      {admin.totalCustomers}
                     </td>
-                    <td className="p-3.5">
+                    <td className="p-3.5 text-center font-bold text-slate-700 dark:text-slate-300">
+                      {admin.totalDeliveryBoys}
+                    </td>
+                    <td className="p-3.5 text-center font-bold text-slate-700 dark:text-slate-300">
+                      {admin.totalOrders}
+                    </td>
+                    <td className="p-3.5 text-right font-bold text-green-600 dark:text-green-400">
+                      ${admin.totalRevenue.toFixed(2)}
+                    </td>
+                    <td className="p-3.5" onClick={(e) => e.stopPropagation()}>
                       <span className={`inline-flex items-center gap-1 font-bold ${admin.isActive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
                         {admin.isActive ? "● Active" : "● Deactivated"}
                       </span>
                     </td>
-                    <td className="p-3.5 text-right">
+                    <td className="p-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleEditClick(admin)}
@@ -684,6 +792,295 @@ export default function SuperAdminDashboard() {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Business Details Modal */}
+      {showDetailsModal && (
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-6 shadow-2xl flex flex-col gap-4 animate-scaleUp max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-sky-950 pb-2">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
+                  {detailsData?.admin.name || "Business Details"}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Region Pincode: {detailsData?.admin.pincode} • Owner Email: {detailsData?.admin.email}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  setDetailsData(null);
+                }}
+                className="p-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {loadingDetails ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <span className="text-xs text-slate-500">Loading business information...</span>
+              </div>
+            ) : detailsData ? (
+              <div className="space-y-4">
+                {/* Tabs */}
+                <div className="flex border-b border-slate-100 dark:border-sky-950 pb-px text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <button
+                    onClick={() => setActiveDetailsTab("overview")}
+                    className={`pb-2.5 px-4 border-b-2 transition ${
+                      activeDetailsTab === "overview"
+                        ? "border-blue-600 text-blue-600 dark:text-blue-400 font-bold"
+                        : "border-transparent hover:text-slate-600"
+                    }`}
+                  >
+                    Overview
+                  </button>
+                  <button
+                    onClick={() => setActiveDetailsTab("customers")}
+                    className={`pb-2.5 px-4 border-b-2 transition ${
+                      activeDetailsTab === "customers"
+                        ? "border-blue-600 text-blue-600 dark:text-blue-400 font-bold"
+                        : "border-transparent hover:text-slate-600"
+                    }`}
+                  >
+                    Customers ({detailsData.customers.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveDetailsTab("delivery")}
+                    className={`pb-2.5 px-4 border-b-2 transition ${
+                      activeDetailsTab === "delivery"
+                        ? "border-blue-600 text-blue-600 dark:text-blue-400 font-bold"
+                        : "border-transparent hover:text-slate-600"
+                    }`}
+                  >
+                    Delivery Team ({detailsData.deliveryPartners.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveDetailsTab("orders")}
+                    className={`pb-2.5 px-4 border-b-2 transition ${
+                      activeDetailsTab === "orders"
+                        ? "border-blue-600 text-blue-600 dark:text-blue-400 font-bold"
+                        : "border-transparent hover:text-slate-600"
+                    }`}
+                  >
+                    Orders ({detailsData.orders.length})
+                  </button>
+                </div>
+
+                {/* Tab Contents */}
+                {activeDetailsTab === "overview" && (
+                  <div className="space-y-6">
+                    {/* Performance metrics row */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 rounded-xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Customers</span>
+                        <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block mt-1">{detailsData.customers.length}</span>
+                      </div>
+                      <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Delivery Boys</span>
+                        <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block mt-1">{detailsData.deliveryPartners.length}</span>
+                      </div>
+                      <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100/50 dark:border-amber-900/30 rounded-xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Orders</span>
+                        <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block mt-1">
+                          {detailsData.orders.filter(o => o.status !== "CANCELLED").length}
+                        </span>
+                      </div>
+                      <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100/50 dark:border-purple-900/30 rounded-xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Revenue</span>
+                        <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block mt-1">
+                          ${detailsData.orders
+                            .flatMap(o => o.payments)
+                            .filter(p => p.status === "PAID")
+                            .reduce((sum, p) => sum + p.amount, 0)
+                            .toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Regional details block */}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-sky-950 rounded-xl space-y-3.5 text-xs">
+                      <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px]">Franchise Contact Info</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <p className="flex justify-between border-b border-slate-200/50 dark:border-sky-950 pb-2">
+                            <span className="text-slate-400">Business Owner:</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{detailsData.admin.name}</span>
+                          </p>
+                          <p className="flex justify-between border-b border-slate-200/50 dark:border-sky-950 pb-2">
+                            <span className="text-slate-400">Email Address:</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{detailsData.admin.email}</span>
+                          </p>
+                          <p className="flex justify-between border-b border-slate-200/50 dark:border-sky-950 pb-2">
+                            <span className="text-slate-400">Phone:</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{detailsData.admin.phone}</span>
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="flex justify-between border-b border-slate-200/50 dark:border-sky-950 pb-2">
+                            <span className="text-slate-400">Pincode Region:</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{detailsData.admin.pincode}</span>
+                          </p>
+                          <p className="flex justify-between border-b border-slate-200/50 dark:border-sky-950 pb-2">
+                            <span className="text-slate-400">Physical Address:</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300 text-right max-w-xs">{detailsData.admin.address}</span>
+                          </p>
+                          <p className="flex justify-between border-b border-slate-200/50 dark:border-sky-950 pb-2">
+                            <span className="text-slate-400">Registration Date:</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">
+                              {new Date(detailsData.admin.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeDetailsTab === "customers" && (
+                  <div className="overflow-x-auto border border-slate-100 dark:border-sky-950/40 rounded-xl max-h-[50vh] overflow-y-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/40 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-sky-950">
+                          <th className="p-3">Customer Name</th>
+                          <th className="p-3">Contact</th>
+                          <th className="p-3">Joined Date</th>
+                          <th className="p-3">Address</th>
+                          <th className="p-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-950 text-xs">
+                        {detailsData.customers.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-500 italic">No customers registered in this pincode.</td>
+                          </tr>
+                        ) : (
+                          detailsData.customers.map((c: any) => (
+                            <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                              <td className="p-3 font-bold text-slate-800 dark:text-slate-200">{c.name}</td>
+                              <td className="p-3 text-slate-600 dark:text-slate-400">{c.email} • {c.phone}</td>
+                              <td className="p-3 text-slate-500">{new Date(c.createdAt).toLocaleDateString()}</td>
+                              <td className="p-3 text-slate-600 dark:text-slate-400">{c.address}</td>
+                              <td className="p-3">
+                                <span className={`font-bold ${c.isActive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                                  {c.isActive ? "● Active" : "● Deactivated"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {activeDetailsTab === "delivery" && (
+                  <div className="overflow-x-auto border border-slate-100 dark:border-sky-950/40 rounded-xl max-h-[50vh] overflow-y-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/40 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-sky-950">
+                          <th className="p-3">Partner Name</th>
+                          <th className="p-3">Contact</th>
+                          <th className="p-3">Joined Date</th>
+                          <th className="p-3">Address</th>
+                          <th className="p-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-950 text-xs">
+                        {detailsData.deliveryPartners.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-500 italic">No delivery partners registered in this pincode.</td>
+                          </tr>
+                        ) : (
+                          detailsData.deliveryPartners.map((dp: any) => (
+                            <tr key={dp.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                              <td className="p-3 font-bold text-slate-800 dark:text-slate-200">{dp.name}</td>
+                              <td className="p-3 text-slate-600 dark:text-slate-400">{dp.email} • {dp.phone}</td>
+                              <td className="p-3 text-slate-500">{new Date(dp.createdAt).toLocaleDateString()}</td>
+                              <td className="p-3 text-slate-600 dark:text-slate-400">{dp.address}</td>
+                              <td className="p-3">
+                                <span className={`font-bold ${dp.isActive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                                  {dp.isActive ? "● Active" : "● Deactivated"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {activeDetailsTab === "orders" && (
+                  <div className="overflow-x-auto border border-slate-100 dark:border-sky-950/40 rounded-xl max-h-[50vh] overflow-y-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/40 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-sky-950">
+                          <th className="p-3">Order ID</th>
+                          <th className="p-3">Customer</th>
+                          <th className="p-3">Time Slot</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3">Assigned Partner</th>
+                          <th className="p-3">Amount</th>
+                          <th className="p-3">Payment</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-950 text-xs">
+                        {detailsData.orders.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500 italic">No orders logged in this pincode.</td>
+                          </tr>
+                        ) : (
+                          detailsData.orders.map((o: any) => {
+                            const totalAmount = o.payments.reduce((sum: number, p: any) => sum + p.amount, 0);
+                            const paymentStatus = o.payments[0]?.status || "UNPAID";
+                            return (
+                              <tr key={o.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                                <td className="p-3 font-mono font-bold text-[10px] text-blue-600">{o.id.slice(0, 8)}...</td>
+                                <td className="p-3">
+                                  <p className="font-bold text-slate-800 dark:text-slate-200">{o.user.name}</p>
+                                  <p className="text-[9px] text-slate-400">{o.user.phone}</p>
+                                </td>
+                                <td className="p-3 text-slate-600 dark:text-slate-400">{o.deliveryTimeSlot}</td>
+                                <td className="p-3">
+                                  <span className={`font-bold ${
+                                    o.status === "DELIVERED"
+                                      ? "text-green-600 dark:text-green-400"
+                                      : o.status === "CANCELLED"
+                                      ? "text-red-500"
+                                      : "text-amber-500"
+                                  }`}>
+                                    {o.status}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-slate-600 dark:text-slate-400">{o.deliveryPartner?.name || "Unassigned"}</td>
+                                <td className="p-3 font-bold">${totalAmount.toFixed(2)}</td>
+                                <td className="p-3">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                    paymentStatus === "PAID"
+                                      ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400"
+                                      : "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400"
+                                  }`}>
+                                    {paymentStatus}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-10 text-slate-500 italic">Failed to load data.</div>
+            )}
           </div>
         </div>
       )}
