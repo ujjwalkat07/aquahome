@@ -133,7 +133,7 @@ export default function QRScanner() {
             <p><strong>Name:</strong> {successData.user?.name}</p>
             <p><strong>Address:</strong> {successData.deliveryAddress}</p>
             <p className="text-amber-500 font-bold border-t border-slate-100 dark:border-sky-950 pt-2 mt-2">
-              Outstanding Invoice Amount: ${(successData.payments?.[0]?.amount || 0).toFixed(2)}
+              Outstanding Invoice Amount: ₹{(successData.payments?.[0]?.amount || 0).toFixed(2)}
             </p>
           </div>
 

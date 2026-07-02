@@ -372,14 +372,14 @@ export default function AdminOrders() {
                           {item.product.name} ({item.product.size}) <span className="font-bold">x{item.quantity}</span>
                         </span>
                         <span className="font-bold text-slate-800 dark:text-slate-200">
-                          ${(item.unitPrice * item.quantity).toFixed(2)}
+                          ₹{(item.unitPrice * item.quantity).toFixed(2)}
                         </span>
                       </div>
                     ))}
                   </div>
                   <div className="flex justify-between font-bold text-sm text-slate-800 dark:text-slate-200 pt-1">
                     <span>Total Amount</span>
-                    <span>${(selectedOrder.payments[0]?.amount || 0).toFixed(2)}</span>
+                    <span>₹{(selectedOrder.payments[0]?.amount || 0).toFixed(2)}</span>
                   </div>
                 </div>
 

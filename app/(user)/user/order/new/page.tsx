@@ -192,7 +192,7 @@ export default function PlaceOrder() {
                     </span>
                     <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{product.name}</h4>
                     <p className="text-xs text-[#0077B6] dark:text-[#00B4D8] font-bold">
-                      ${product.pricePerUnit.toFixed(2)} / bottle
+                      ₹{product.pricePerUnit.toFixed(2)} / bottle
                     </p>
                   </div>
 
@@ -326,7 +326,7 @@ export default function PlaceOrder() {
                     <span className="text-slate-600 dark:text-slate-400">{item.name} ({item.size})</span>
                   </div>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    ${(item.pricePerUnit * item.quantity).toFixed(2)}
+                    ₹{(item.pricePerUnit * item.quantity).toFixed(2)}
                   </span>
                 </div>
               ))
@@ -336,7 +336,7 @@ export default function PlaceOrder() {
           <div className="border-t border-slate-100 dark:border-sky-950 pt-3 flex justify-between items-center">
             <span className="text-base font-bold text-slate-800 dark:text-slate-200">Total Price</span>
             <span className="text-lg font-extrabold text-[#0077B6] dark:text-[#00B4D8]">
-              ${totalPrice.toFixed(2)}
+              ₹{totalPrice.toFixed(2)}
             </span>
           </div>
 

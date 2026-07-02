@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Loader2, CreditCard, DollarSign, CheckCircle2, Clock, Check, X, FileText, Printer, ArrowDown } from "lucide-react";
+import { Loader2, CreditCard, IndianRupee, CheckCircle2, Clock, Check, X, FileText, Printer, ArrowDown } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface User {
@@ -172,7 +172,7 @@ export default function AdminPayments() {
         <div className="bg-[#0077B6] text-white rounded-2xl p-5 shadow-sm flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-sky-100 uppercase tracking-wider block">Total Outstanding Balance</span>
-            <span className="text-2xl font-extrabold mt-1 block">${totalOutstanding.toFixed(2)}</span>
+            <span className="text-2xl font-extrabold mt-1 block">₹{totalOutstanding.toFixed(2)}</span>
           </div>
           <div className="p-2.5 bg-white/10 rounded-full">
             <Clock size={20} />
@@ -181,7 +181,7 @@ export default function AdminPayments() {
         <div className="bg-green-600 text-white rounded-2xl p-5 shadow-sm flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-green-100 uppercase tracking-wider block">Total Collected Revenue</span>
-            <span className="text-2xl font-extrabold mt-1 block">${totalCollected.toFixed(2)}</span>
+            <span className="text-2xl font-extrabold mt-1 block">₹{totalCollected.toFixed(2)}</span>
           </div>
           <div className="p-2.5 bg-white/10 rounded-full">
             <CheckCircle2 size={20} />
@@ -225,9 +225,9 @@ export default function AdminPayments() {
                     <tr key={sum.email} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                       <td className="p-3 font-bold text-slate-800 dark:text-slate-200">{sum.name}</td>
                       <td className="p-3 text-slate-500">{sum.email}</td>
-                      <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">${sum.invoiced.toFixed(2)}</td>
-                      <td className="p-3 font-semibold text-green-600 dark:text-green-400">${sum.paid.toFixed(2)}</td>
-                      <td className="p-3 font-bold text-red-500">${sum.outstanding.toFixed(2)}</td>
+                      <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">₹{sum.invoiced.toFixed(2)}</td>
+                      <td className="p-3 font-semibold text-green-600 dark:text-green-400">₹{sum.paid.toFixed(2)}</td>
+                      <td className="p-3 font-bold text-red-500">₹{sum.outstanding.toFixed(2)}</td>
                     </tr>
                   ))
                 )}
@@ -273,7 +273,7 @@ export default function AdminPayments() {
                           <p className="text-[10px] text-slate-400">{p.user.phone}</p>
                         </td>
                         <td className="p-4 font-bold text-slate-700 dark:text-slate-300">
-                          ${p.amount.toFixed(2)}
+                          ₹{p.amount.toFixed(2)}
                         </td>
                         <td className="p-4 text-slate-500">
                           {new Date(p.createdAt).toLocaleDateString()}

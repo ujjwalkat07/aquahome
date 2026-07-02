@@ -87,8 +87,8 @@ export async function POST(req: Request) {
     const paymentAmount = order.payments[0]?.amount || 0;
     const paymentStatus = order.payments[0]?.status || "UNPAID";
     const paymentMsg = paymentStatus === "PAID"
-      ? `Your payment of $${paymentAmount.toFixed(2)} was received successfully.`
-      : `Total amount due: $${paymentAmount.toFixed(2)}. Please make offline payment to the delivery partner or transfer to the account.`;
+      ? `Your payment of ₹${paymentAmount.toFixed(2)} was received successfully.`
+      : `Total amount due: ₹${paymentAmount.toFixed(2)}. Please make offline payment to the delivery partner or transfer to the account.`;
     
     await notifyUser({
       userId: order.userId,

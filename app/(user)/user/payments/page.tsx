@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Loader2, CreditCard, DollarSign, Receipt, CheckCircle, Clock } from "lucide-react";
+import { Loader2, CreditCard, IndianRupee, Receipt, CheckCircle, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Order {
@@ -76,10 +76,10 @@ export default function UserPayments() {
       <div className="bg-gradient-to-r from-[#0077B6] to-[#00B4D8] text-white rounded-2xl p-6 shadow-md flex items-center justify-between">
         <div className="space-y-1">
           <p className="text-xs font-bold text-sky-100 uppercase tracking-wider">Total Outstanding Balance</p>
-          <p className="text-3xl font-extrabold">${totalOutstanding.toFixed(2)}</p>
+          <p className="text-3xl font-extrabold">₹{totalOutstanding.toFixed(2)}</p>
         </div>
         <div className="p-3 bg-white/10 rounded-full">
-          <DollarSign size={32} />
+          <IndianRupee size={32} />
         </div>
       </div>
 
@@ -111,7 +111,7 @@ export default function UserPayments() {
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 block">
-                      ${payment.amount.toFixed(2)}
+                      ₹{payment.amount.toFixed(2)}
                     </span>
                     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-amber-500 dark:text-amber-400 uppercase">
                       <Clock size={10} /> Payment Due
@@ -150,7 +150,7 @@ export default function UserPayments() {
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-extrabold text-green-600 dark:text-green-400 block">
-                        +${payment.amount.toFixed(2)}
+                        +₹{payment.amount.toFixed(2)}
                       </span>
                       <span className="inline-block px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 text-[9px] font-bold uppercase tracking-wider">
                         {payment.method || "Paid"}

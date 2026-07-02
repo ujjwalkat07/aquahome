@@ -242,7 +242,7 @@ export default function AdminUsers() {
                       </span>
                     </td>
                     <td className="p-4 font-bold text-slate-700 dark:text-slate-300">
-                      ${user.unpaidBalance.toFixed(2)}
+                      ₹{user.unpaidBalance.toFixed(2)}
                     </td>
                     <td className="p-4 font-medium text-slate-600 dark:text-slate-400">
                       {user.totalOrders} deliveries
@@ -319,7 +319,7 @@ export default function AdminUsers() {
                   <div className="p-3.5 bg-red-50/10 border border-red-100/10 rounded-xl dark:border-red-950">
                     <span className="text-[10px] font-bold text-slate-400 block uppercase">Unpaid Invoice Ledger</span>
                     <span className="text-base font-extrabold text-red-500 mt-1 block">
-                      ${selectedUser.unpaidBalance.toFixed(2)}
+                      ₹{selectedUser.unpaidBalance.toFixed(2)}
                     </span>
                   </div>
                 </div>

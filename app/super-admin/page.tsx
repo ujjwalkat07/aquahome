@@ -17,7 +17,7 @@ import {
   Search,
   Copy,
   Check,
-  DollarSign,
+  IndianRupee,
   ShoppingBag,
   Activity,
   UserCheck,
@@ -282,7 +282,7 @@ export default function SuperAdminDashboard() {
       "Total Customers",
       "Total Delivery Partners",
       "Total Orders",
-      "Total Revenue ($)"
+      "Total Revenue (₹)"
     ];
 
     const rows = admins.map(admin => [
@@ -456,11 +456,11 @@ export default function SuperAdminDashboard() {
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-4 shadow-sm flex items-center justify-between">
             <div>
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Platform Revenue</span>
-              <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block mt-1">${stats.totalRevenue.toFixed(2)}</span>
+              <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block mt-1">₹{stats.totalRevenue.toFixed(2)}</span>
               <span className="text-[10px] text-green-600 dark:text-green-400 font-bold">Total paid transactions</span>
             </div>
             <div className="p-3 bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 rounded-xl">
-              <DollarSign size={20} />
+              <IndianRupee size={20} />
             </div>
           </div>
 
@@ -557,7 +557,7 @@ export default function SuperAdminDashboard() {
                       {admin.totalOrders}
                     </td>
                     <td className="p-3.5 text-right font-bold text-green-600 dark:text-green-400">
-                      ${admin.totalRevenue.toFixed(2)}
+                      ₹{admin.totalRevenue.toFixed(2)}
                     </td>
                     <td className="p-3.5" onClick={(e) => e.stopPropagation()}>
                       <span className={`inline-flex items-center gap-1 font-bold ${admin.isActive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
@@ -894,7 +894,7 @@ export default function SuperAdminDashboard() {
                       <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100/50 dark:border-purple-900/30 rounded-xl">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Revenue</span>
                         <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block mt-1">
-                          ${detailsData.orders
+                          ₹{detailsData.orders
                             .flatMap(o => o.payments)
                             .filter(p => p.status === "PAID")
                             .reduce((sum, p) => sum + p.amount, 0)
@@ -1059,7 +1059,7 @@ export default function SuperAdminDashboard() {
                                   </span>
                                 </td>
                                 <td className="p-3 text-slate-600 dark:text-slate-400">{o.deliveryPartner?.name || "Unassigned"}</td>
-                                <td className="p-3 font-bold">${totalAmount.toFixed(2)}</td>
+                                <td className="p-3 font-bold">₹{totalAmount.toFixed(2)}</td>
                                 <td className="p-3">
                                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                                     paymentStatus === "PAID"

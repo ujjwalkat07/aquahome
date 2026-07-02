@@ -237,7 +237,7 @@ export default function MyOrders() {
                     <div className="text-left sm:text-right">
                       <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Total Price</p>
                       <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
-                        ${orderTotal.toFixed(2)}
+                        ₹{orderTotal.toFixed(2)}
                       </p>
                     </div>
 
@@ -268,7 +268,7 @@ export default function MyOrders() {
                                   {item.product.name} ({item.product.size}) <span className="font-bold text-slate-500">x{item.quantity}</span>
                                 </span>
                                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                                  ${(item.unitPrice * item.quantity).toFixed(2)}
+                                  ₹{(item.unitPrice * item.quantity).toFixed(2)}
                                 </span>
                               </div>
                             ))}

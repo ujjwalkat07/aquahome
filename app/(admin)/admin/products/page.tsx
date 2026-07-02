@@ -208,7 +208,7 @@ export default function AdminProducts() {
                     <h3 className="font-bold text-slate-800 dark:text-slate-200 mt-1">{product.name}</h3>
                   </div>
                   <span className="text-sm font-extrabold text-[#0077B6] dark:text-[#00B4D8]">
-                    ${product.pricePerUnit.toFixed(2)}
+                    ₹{product.pricePerUnit.toFixed(2)}
                   </span>
                 </div>
 
@@ -305,7 +305,7 @@ export default function AdminProducts() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Price per Unit ($)</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Price per Unit (₹)</label>
                   <input
                     type="text"
                     placeholder="e.g. 2.50"

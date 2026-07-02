@@ -183,7 +183,7 @@ export async function POST(req: Request) {
       await notifyUser({
         userId: currentUserId,
         title: "Order Placed Successfully",
-        message: `Your order for AquaHome Mineral Water has been placed. Total: $${totalAmount.toFixed(2)}. Time slot: ${deliveryTimeSlot}.`,
+        message: `Your order for AquaHome Mineral Water has been placed. Total: ₹${totalAmount.toFixed(2)}. Time slot: ${deliveryTimeSlot}.`,
         email: orderUser.email,
         phone: orderUser.phone
       });

@@ -7,7 +7,7 @@ import {
   TrendingUp,
   ShoppingBag,
   Clock,
-  DollarSign,
+  IndianRupee,
   AlertTriangle,
   ArrowUpRight,
   ChevronRight,
@@ -117,13 +117,13 @@ export default function AdminDashboard() {
         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-5 shadow-sm flex items-start justify-between">
           <div className="space-y-2">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Revenue This Month</span>
-            <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block">${stats?.revenueThisMonth.toFixed(2) || "0.00"}</span>
+            <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block">₹{stats?.revenueThisMonth.toFixed(2) || "0.00"}</span>
             <span className={`text-[10px] font-bold inline-flex items-center gap-0.5 ${revenueChange >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
               <TrendingUp size={12} /> {revenueChange >= 0 ? "+" : ""}{revenueChange.toFixed(0)}% vs last month
             </span>
           </div>
           <div className="p-3 bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400 rounded-xl">
-            <DollarSign size={20} />
+            <IndianRupee size={20} />
           </div>
         </div>
 
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-5 shadow-sm flex items-start justify-between">
           <div className="space-y-2">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Unpaid Invoices Total</span>
-            <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block">${stats?.unpaidInvoicesTotal.toFixed(2) || "0.00"}</span>
+            <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 block">₹{stats?.unpaidInvoicesTotal.toFixed(2) || "0.00"}</span>
             <Link href="/admin/payments" className="text-[11px] font-bold text-[#0077B6] dark:text-[#00B4D8] hover:underline inline-flex items-center gap-0.5">
               Record collection <ChevronRight size={12} />
             </Link>

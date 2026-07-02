@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     await notifyUser({
       userId: payment.userId,
       title: "Payment Received",
-      message: `We have received your payment of $${payment.amount.toFixed(2)} via ${method}. Thank you for your business!`,
+      message: `We have received your payment of ₹${payment.amount.toFixed(2)} via ${method}. Thank you for your business!`,
       email: payment.user.email,
       phone: payment.user.phone
     });
