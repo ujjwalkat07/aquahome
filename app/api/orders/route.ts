@@ -120,7 +120,6 @@ export async function POST(req: Request) {
       });
 
       // Create Order Items and update inventory
-      const orderItemsData = [];
       for (const item of items) {
         // Fetch current product details inside transaction to prevent concurrency bugs
         const dbProduct = await tx.product.findUnique({
@@ -131,16 +130,14 @@ export async function POST(req: Request) {
         }
 
         // Create item
-        orderItemsData.push(
-          tx.orderItem.create({
-            data: {
-              orderId: order.id,
-              productId: dbProduct.id,
-              quantity: item.quantity,
-              unitPrice: dbProduct.pricePerUnit
-            }
-          })
-        );
+        await tx.orderItem.create({
+          data: {
+            orderId: order.id,
+            productId: dbProduct.id,
+            quantity: item.quantity,
+            unitPrice: dbProduct.pricePerUnit
+          }
+        });
 
         // Update product stock
         await tx.product.update({
@@ -148,8 +145,6 @@ export async function POST(req: Request) {
           data: { stock: dbProduct.stock - item.quantity }
         });
       }
-
-      await Promise.all(orderItemsData);
 
       // Create invoice/payment
       const payment = await tx.payment.create({
@@ -175,6 +170,9 @@ export async function POST(req: Request) {
       });
 
       return { order: updatedOrder, payment };
+    }, {
+      maxWait: 5000,
+      timeout: 15000
     });
 
     // 3. Post-Transaction tasks (notifications & alerts)
