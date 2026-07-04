@@ -23,6 +23,19 @@ export async function GET(req: Request) {
     if (role === "CUSTOMER") {
       whereClause.userId = currentUserId;
     } else if (role === "ADMIN") {
+      // Fetch the admin's details (specifically pincode) to scope payments
+      const adminUser = await prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: { pincode: true }
+      });
+      if (!adminUser) {
+        return NextResponse.json({ error: "Admin not found" }, { status: 404 });
+      }
+
+      whereClause.order = {
+        deliveryPincode: adminUser.pincode
+      };
+
       if (userId) {
         whereClause.userId = userId;
       }
@@ -66,12 +79,27 @@ export async function POST(req: Request) {
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
-        user: { select: { id: true, name: true, email: true, phone: true } }
+        user: { select: { id: true, name: true, email: true, phone: true } },
+        order: { select: { deliveryPincode: true } }
       }
     });
 
     if (!payment) {
       return NextResponse.json({ error: "Payment record not found." }, { status: 404 });
+    }
+
+    // Verify the payment is in the admin's pincode region
+    const currentUserId = (session.user as any).id;
+    const adminUser = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { pincode: true }
+    });
+    if (!adminUser) {
+      return NextResponse.json({ error: "Admin not found" }, { status: 404 });
+    }
+
+    if (payment.order.deliveryPincode !== adminUser.pincode) {
+      return NextResponse.json({ error: "Access denied: Payment belongs to a different pincode region." }, { status: 403 });
     }
 
     if (payment.status === "PAID") {

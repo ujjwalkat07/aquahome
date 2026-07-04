@@ -11,10 +11,24 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Fetch the admin's details (specifically pincode) to scope users list
+    const adminUser = await prisma.user.findUnique({
+      where: { id: (session.user as any).id },
+      select: { pincode: true }
+    });
+
+    if (!adminUser) {
+      return NextResponse.json({ error: "Admin not found" }, { status: 404 });
+    }
+
+    const pincode = adminUser.pincode;
+
     const { searchParams } = new URL(req.url);
     const role = searchParams.get("role"); // e.g. CUSTOMER, DELIVERY, ADMIN
     
-    let whereClause: any = {};
+    let whereClause: any = {
+      pincode: pincode
+    };
     if (role) {
       whereClause.role = role;
     }
@@ -90,17 +104,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const currentUserId = (session.user as any).id;
+    const adminUser = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { pincode: true }
+    });
+    if (!adminUser) {
+      return NextResponse.json({ error: "Admin not found" }, { status: 404 });
+    }
+    const adminPincode = adminUser.pincode;
+
     const body = await req.json();
     const { id, name, email, phone, address, pincode, role, password, isActive } = body;
 
     // Check if updating
     if (id) {
+      // Find the user first to make sure they are in the admin's pincode
+      const targetUser = await prisma.user.findUnique({
+        where: { id }
+      });
+      if (!targetUser) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+      if (targetUser.pincode !== adminPincode) {
+        return NextResponse.json({ error: "Access denied: User is in a different pincode region." }, { status: 403 });
+      }
+
+      const userPincode = pincode || targetUser.pincode;
+      if (userPincode !== adminPincode) {
+        return NextResponse.json({ error: "Access denied: Cannot assign a different pincode region." }, { status: 403 });
+      }
+
       let updateData: any = {
         name,
         email,
         phone,
         address,
-        pincode,
+        pincode: userPincode,
         isActive: isActive !== undefined ? !!isActive : undefined
       };
 
@@ -125,8 +165,13 @@ export async function POST(req: Request) {
       return NextResponse.json(updatedUser);
     } else {
       // Create user
-      if (!name || !email || !phone || !address || !pincode || !role || !password) {
+      if (!name || !email || !phone || !address || !role || !password) {
         return NextResponse.json({ error: "Missing required registration details" }, { status: 400 });
+      }
+
+      const userPincode = pincode || adminPincode;
+      if (userPincode !== adminPincode) {
+        return NextResponse.json({ error: "Access denied: Cannot register users in a different pincode region." }, { status: 403 });
       }
 
       // Check existing email
@@ -144,7 +189,7 @@ export async function POST(req: Request) {
           email,
           phone,
           address,
-          pincode,
+          pincode: userPincode,
           role,
           passwordHash,
           isActive: true,

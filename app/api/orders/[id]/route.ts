@@ -43,6 +43,18 @@ export async function GET(
     if (userRole === "DELIVERY" && order.deliveryPartnerId !== currentUserId) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
+    if (userRole === "ADMIN") {
+      const adminUser = await prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: { pincode: true }
+      });
+      if (!adminUser) {
+        return NextResponse.json({ error: "Admin not found" }, { status: 404 });
+      }
+      if (order.deliveryPincode !== adminUser.pincode) {
+        return NextResponse.json({ error: "Access denied: Order belongs to a different pincode region" }, { status: 403 });
+      }
+    }
 
     return NextResponse.json(order);
   } catch (error: any) {

@@ -27,6 +27,17 @@ export async function GET(req: Request) {
     } else if (userRole === "DELIVERY") {
       whereClause.deliveryPartnerId = currentUserId;
     } else if (userRole === "ADMIN") {
+      // Fetch the admin's details (specifically pincode) to scope orders
+      const adminUser = await prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: { pincode: true }
+      });
+      if (!adminUser) {
+        return NextResponse.json({ error: "Admin not found" }, { status: 404 });
+      }
+
+      whereClause.deliveryPincode = adminUser.pincode;
+
       if (userIdParam) {
         whereClause.userId = userIdParam;
       }
