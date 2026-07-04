@@ -6,6 +6,7 @@ import { Loader2, CreditCard, IndianRupee, CheckCircle2, Clock, Check, X, FileTe
 import toast from "react-hot-toast";
 
 interface User {
+  id: string;
   name: string;
   email: string;
   phone: string;
@@ -32,6 +33,7 @@ interface Payment {
 }
 
 interface UserSummary {
+  id: string;
   name: string;
   email: string;
   invoiced: number;
@@ -54,6 +56,7 @@ export default function AdminPayments() {
 
   // Form State
   const [recordPaymentId, setRecordPaymentId] = useState<string | null>(null);
+  const [recordUserObj, setRecordUserObj] = useState<{ id: string; name: string; outstanding: number } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [paymentNote, setPaymentNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -80,23 +83,31 @@ export default function AdminPayments() {
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recordPaymentId) return;
+    if (!recordPaymentId && !recordUserObj) return;
 
     setSubmitting(true);
     try {
+      const payload: any = {
+        method: paymentMethod,
+        note: paymentNote,
+      };
+
+      if (recordUserObj) {
+        payload.userId = recordUserObj.id;
+      } else {
+        payload.paymentId = recordPaymentId;
+      }
+
       const res = await fetch("/api/admin/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentId: recordPaymentId,
-          method: paymentMethod,
-          note: paymentNote,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        toast.success("Payment recorded successfully!");
+        toast.success(recordUserObj ? `Collected all payments for ${recordUserObj.name}!` : "Payment recorded successfully!");
         setRecordPaymentId(null);
+        setRecordUserObj(null);
         setPaymentNote("");
         fetchPayments();
       } else {
@@ -158,6 +169,7 @@ export default function AdminPayments() {
 
       if (!existing) {
         existing = {
+          id: p.user.id,
           name: p.user.name,
           email: p.user.email,
           invoiced: 0,
@@ -325,12 +337,13 @@ export default function AdminPayments() {
                   <th className="p-3">Total Invoiced</th>
                   <th className="p-3">Total Paid</th>
                   <th className="p-3">Outstanding Balance</th>
+                  <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-950">
                 {summaries.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-400 italic">No customer data.</td>
+                    <td colSpan={6} className="p-6 text-center text-slate-400 italic">No customer data.</td>
                   </tr>
                 ) : (
                   summaries.map((sum) => (
@@ -340,6 +353,18 @@ export default function AdminPayments() {
                       <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">₹{sum.invoiced.toFixed(2)}</td>
                       <td className="p-3 font-semibold text-green-600 dark:text-green-400">₹{sum.paid.toFixed(2)}</td>
                       <td className="p-3 font-bold text-red-500">₹{sum.outstanding.toFixed(2)}</td>
+                      <td className="p-3 text-right">
+                        {sum.outstanding > 0 ? (
+                          <button
+                            onClick={() => setRecordUserObj({ id: sum.id, name: sum.name, outstanding: sum.outstanding })}
+                            className="px-2 py-1 bg-green-50 hover:bg-green-100 dark:bg-green-950/20 text-green-600 dark:text-green-400 text-[10px] font-bold rounded-lg border border-green-100 dark:border-green-950/50 transition"
+                          >
+                            Collect All
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">No Balance</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -406,12 +431,27 @@ export default function AdminPayments() {
                         </td>
                         <td className="p-4 text-right">
                           {!isPaid ? (
-                            <button
-                              onClick={() => setRecordPaymentId(p.id)}
-                              className="px-3 py-1.5 bg-green-50 hover:bg-green-100 dark:bg-green-950/20 text-green-600 dark:text-green-400 text-xs font-bold rounded-lg border border-green-100 dark:border-green-950/50 transition"
-                            >
-                              Collect Fee
-                            </button>
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={() => setRecordPaymentId(p.id)}
+                                className="px-2.5 py-1.5 bg-green-50 hover:bg-green-100 dark:bg-green-950/20 text-green-600 dark:text-green-400 text-xs font-bold rounded-lg border border-green-100 dark:border-green-950/50 transition"
+                                title="Collect payment for this invoice"
+                              >
+                                Collect Fee
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const userSummary = summaries.find(s => s.email === p.user.email);
+                                  if (userSummary) {
+                                    setRecordUserObj({ id: p.user.id, name: p.user.name, outstanding: userSummary.outstanding });
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 text-[#0077B6] dark:text-sky-400 text-xs font-bold rounded-lg border border-blue-100 dark:border-sky-950/50 transition"
+                                title="Collect all outstanding balance for this customer"
+                              >
+                                Collect All
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-slate-400 dark:text-slate-500 text-[10px] font-semibold italic">Reconciled</span>
                           )}
@@ -427,17 +467,36 @@ export default function AdminPayments() {
       )}
 
       {/* Record Payment Dialog */}
-      {recordPaymentId && (
+      {(recordPaymentId || recordUserObj) && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fadeIn p-4">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-6 shadow-2xl space-y-4 animate-scaleUp">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-sky-950 pb-3">
-              <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">Record Fee Collection</h3>
-              <button onClick={() => setRecordPaymentId(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+              <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                {recordUserObj ? `Collect All Balance: ${recordUserObj.name}` : "Record Fee Collection"}
+              </h3>
+              <button 
+                onClick={() => {
+                  setRecordPaymentId(null);
+                  setRecordUserObj(null);
+                }} 
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleRecordPayment} className="space-y-4 text-xs">
+              {recordUserObj && (
+                <div className="bg-blue-50/50 dark:bg-sky-950/30 border border-blue-100 dark:border-sky-950 rounded-xl p-3 text-xs space-y-1">
+                  <p className="font-semibold text-slate-600 dark:text-slate-350">
+                    Total Outstanding Balance to Collect:
+                  </p>
+                  <p className="text-lg font-extrabold text-[#0077B6] dark:text-sky-400">
+                    ₹{recordUserObj.outstanding.toFixed(2)}
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Collection Mode</label>
                 <select
@@ -465,7 +524,10 @@ export default function AdminPayments() {
               <div className="flex gap-3 pt-3 border-t border-slate-100 dark:border-sky-950">
                 <button
                   type="button"
-                  onClick={() => setRecordPaymentId(null)}
+                  onClick={() => {
+                    setRecordPaymentId(null);
+                    setRecordUserObj(null);
+                  }}
                   className="flex-1 py-2.5 font-bold text-slate-500 border border-slate-100 dark:border-sky-950 hover:bg-slate-50 rounded-xl transition"
                 >
                   Close
@@ -475,7 +537,7 @@ export default function AdminPayments() {
                   className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition flex items-center justify-center"
                   disabled={submitting}
                 >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reconcile Invoice"}
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reconcile Invoice(s)"}
                 </button>
               </div>
             </form>
