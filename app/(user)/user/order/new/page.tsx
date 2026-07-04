@@ -265,7 +265,7 @@ export default function PlaceOrder() {
         </div>
 
         {/* Order Scheduling / Subscriptions */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-5 shadow-sm space-y-4">
+        {/* <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
@@ -306,7 +306,7 @@ export default function PlaceOrder() {
               </p>
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Order Summary & Confirm */}
         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-5 shadow-md space-y-4">

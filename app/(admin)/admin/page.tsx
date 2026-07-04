@@ -13,7 +13,8 @@ import {
   ChevronRight,
   Package,
   Users,
-  CreditCard
+  CreditCard,
+  Truck
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -76,6 +77,49 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  const modules = [
+    {
+      name: "Users",
+      description: "Manage customer profiles, details, and access.",
+      href: "/admin/users",
+      icon: Users,
+      color: "text-indigo-600 dark:text-indigo-400",
+      bgColor: "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-100/50 dark:border-indigo-950/50",
+    },
+    {
+      name: "Orders",
+      description: "Track sales, dispatch, and order fulfillment status.",
+      href: "/admin/orders",
+      icon: ShoppingBag,
+      color: "text-sky-600 dark:text-sky-400",
+      bgColor: "bg-sky-50/50 dark:bg-sky-950/20 border-sky-100/50 dark:border-sky-950/50",
+    },
+    {
+      name: "Delivery Partners",
+      description: "Manage driver accounts and route assignments.",
+      href: "/admin/delivery-partners",
+      icon: Truck,
+      color: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-50/50 dark:bg-amber-950/20 border-amber-100/50 dark:border-amber-950/50",
+    },
+    {
+      name: "Payments",
+      description: "Audit invoices, payment collections, and dues.",
+      href: "/admin/payments",
+      icon: CreditCard,
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-100/50 dark:border-emerald-950/50",
+    },
+    {
+      name: "Stock Manager",
+      description: "Control products, thresholds, and replenishment.",
+      href: "/admin/products",
+      icon: Package,
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50/50 dark:bg-purple-950/20 border-purple-100/50 dark:border-purple-950/50",
+    },
+  ];
 
   const revenueChange = stats
     ? stats.revenueLastMonth > 0
@@ -155,6 +199,43 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+      </div>
+
+      {/* Quick Access Modules */}
+      <div className="space-y-3">
+        <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+          Quick Access Modules
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {modules.map((m) => {
+            const Icon = m.icon;
+            return (
+              <Link
+                key={m.name}
+                href={m.href}
+                className="group relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between min-h-[140px]"
+              >
+                <div className="space-y-3">
+                  <div className={`p-2.5 w-fit rounded-xl border ${m.bgColor} transition-transform duration-300 group-hover:scale-110`}>
+                    <Icon size={20} className={m.color} />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#0077B6] dark:group-hover:text-[#00B4D8] transition-colors">
+                      {m.name}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal">
+                      {m.description}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-[#0077B6] dark:text-[#00B4D8]">
+                  <span>Manage</span>
+                  <ArrowUpRight size={14} className="transform transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
