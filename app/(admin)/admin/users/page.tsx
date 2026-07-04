@@ -5,7 +5,8 @@ import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as zod from "zod";
-import { Loader2, Users, Plus, ShieldCheck, ShieldAlert, X, Eye, Phone, MapPin, Search } from "lucide-react";
+import { Loader2, Users, Plus, ShieldCheck, ShieldAlert, X, Eye, Phone, MapPin, Search, ShoppingBag } from "lucide-react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 interface UserProfile {
@@ -37,6 +38,7 @@ type UserForm = zod.infer<typeof userSchema>;
 
 export default function AdminUsers() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -248,6 +250,15 @@ export default function AdminUsers() {
                       {user.totalOrders} deliveries
                     </td>
                     <td className="p-4 text-right flex items-center justify-end gap-2">
+                      {user.role === "CUSTOMER" && (
+                        <button
+                          onClick={() => router.push(`/admin/orders?customerId=${user.id}`)}
+                          className="p-1.5 rounded-lg border border-slate-100 dark:border-sky-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 hover:text-[#0077B6] transition"
+                          title="Place order on behalf"
+                        >
+                          <ShoppingBag size={16} />
+                        </button>
+                      )}
                       <button
                         onClick={() => setSelectedUser(user)}
                         className="p-1.5 rounded-lg border border-slate-100 dark:border-sky-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 transition"
@@ -345,6 +356,17 @@ export default function AdminUsers() {
 
             {/* Actions Footer */}
             <div className="border-t border-slate-100 dark:border-sky-950 pt-4 flex gap-3">
+              {selectedUser.role === "CUSTOMER" && (
+                <button
+                  onClick={() => {
+                    setSelectedUser(null);
+                    router.push(`/admin/orders?customerId=${selectedUser.id}`);
+                  }}
+                  className="flex-1 py-3 text-xs font-bold bg-[#0077B6] hover:bg-[#023E8A] text-white rounded-xl transition flex items-center justify-center gap-1.5"
+                >
+                  <ShoppingBag size={14} /> Place Order
+                </button>
+              )}
               <button
                 onClick={() => toggleUserActive(selectedUser)}
                 className={`flex-1 py-3 text-xs font-bold rounded-xl transition ${

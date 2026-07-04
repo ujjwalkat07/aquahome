@@ -77,6 +77,8 @@ export async function POST(req: Request) {
     }
 
     const currentUserId = (session.user as any).id;
+    const currentUserRole = (session.user as any).role;
+
     const body = await req.json();
     const {
       items, // array of { productId, quantity }
@@ -84,11 +86,48 @@ export async function POST(req: Request) {
       deliveryPincode,
       deliveryTimeSlot,
       isScheduled,
-      scheduleFrequency
+      scheduleFrequency,
+      customerId // optional, for admin placing order on behalf of customer
     } = body;
 
     if (!items || items.length === 0 || !deliveryAddress || !deliveryPincode || !deliveryTimeSlot) {
       return NextResponse.json({ error: "Missing required order details" }, { status: 400 });
+    }
+
+    let targetUserId = currentUserId;
+
+    if (customerId) {
+      if (currentUserRole !== "ADMIN") {
+        return NextResponse.json({ error: "Access denied. Only admins can place orders on behalf of other users." }, { status: 403 });
+      }
+
+      // Fetch admin's details to verify pincode region
+      const adminUser = await prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: { pincode: true }
+      });
+      if (!adminUser) {
+        return NextResponse.json({ error: "Admin profile not found." }, { status: 404 });
+      }
+
+      // Fetch target customer details
+      const targetCustomer = await prisma.user.findUnique({
+        where: { id: customerId },
+        select: { id: true, pincode: true }
+      });
+      if (!targetCustomer) {
+        return NextResponse.json({ error: "Target customer not found." }, { status: 404 });
+      }
+
+      if (targetCustomer.pincode !== adminUser.pincode) {
+        return NextResponse.json({ error: "Access denied: Customer belongs to a different pincode region." }, { status: 403 });
+      }
+
+      if (deliveryPincode !== adminUser.pincode) {
+        return NextResponse.json({ error: "Delivery pincode must match customer's regional pincode." }, { status: 400 });
+      }
+
+      targetUserId = customerId;
     }
 
     // 1. Fetch products and calculate total cost
@@ -120,7 +159,7 @@ export async function POST(req: Request) {
       // Create Order
       const order = await tx.order.create({
         data: {
-          userId: currentUserId,
+          userId: targetUserId,
           status: "PENDING",
           deliveryTimeSlot,
           deliveryAddress,
@@ -160,7 +199,7 @@ export async function POST(req: Request) {
       // Create invoice/payment
       const payment = await tx.payment.create({
         data: {
-          userId: currentUserId,
+          userId: targetUserId,
           orderId: order.id,
           amount: totalAmount,
           status: "UNPAID",
@@ -187,12 +226,12 @@ export async function POST(req: Request) {
     });
 
     // 3. Post-Transaction tasks (notifications & alerts)
-    const orderUser = await prisma.user.findUnique({ where: { id: currentUserId } });
+    const orderUser = await prisma.user.findUnique({ where: { id: targetUserId } });
     if (orderUser) {
       await notifyUser({
-        userId: currentUserId,
+        userId: targetUserId,
         title: "Order Placed Successfully",
-        message: `Your order for AquaHome Mineral Water has been placed. Total: ₹${totalAmount.toFixed(2)}. Time slot: ${deliveryTimeSlot}.`,
+        message: `Your order for AquaHome Mineral Water has been placed ${customerId ? "by Admin " : ""}on your behalf. Total: ₹${totalAmount.toFixed(2)}. Time slot: ${deliveryTimeSlot}.`,
         email: orderUser.email,
         phone: orderUser.phone
       });

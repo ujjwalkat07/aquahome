@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Loader2, ShoppingBag, Truck, CheckCircle, Clock, XCircle, User, Calendar, MapPin, Eye, Search, X } from "lucide-react";
+import { Loader2, ShoppingBag, Truck, CheckCircle, Clock, XCircle, User, Calendar, MapPin, Eye, Search, X, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Product {
@@ -67,6 +67,22 @@ export default function AdminOrders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // Place Order on Behalf of Customer Modal State
+  const [showPlaceOrderModal, setShowPlaceOrderModal] = useState(false);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loadingModalData, setLoadingModalData] = useState(false);
+
+  // Modal Form State
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryPincode, setDeliveryPincode] = useState("");
+  const [deliveryTimeSlot, setDeliveryTimeSlot] = useState("08:00 AM - 12:00 PM");
+  const [orderItems, setOrderItems] = useState<{ [productId: string]: number }>({});
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduleFrequency, setScheduleFrequency] = useState("WEEKLY");
+  const [submittingOrder, setSubmittingOrder] = useState(false);
+
   const loadData = async () => {
     try {
       // Fetch orders
@@ -90,6 +106,135 @@ export default function AdminOrders() {
       loadData();
     }
   }, [session]);
+
+  useEffect(() => {
+    if (showPlaceOrderModal) {
+      const fetchModalData = async () => {
+        setLoadingModalData(true);
+        try {
+          const custRes = await fetch("/api/admin/users?role=CUSTOMER");
+          const custData = await custRes.json();
+          setCustomers(custData);
+
+          const prodRes = await fetch("/api/products");
+          const prodData = await prodRes.json();
+          setProducts(prodData.filter((p: any) => p.isAvailable));
+        } catch (err) {
+          toast.error("Failed to load customer list or products.");
+        } finally {
+          setLoadingModalData(false);
+        }
+      };
+      fetchModalData();
+    }
+  }, [showPlaceOrderModal]);
+
+  useEffect(() => {
+    if (selectedCustomerId && customers.length > 0) {
+      const customer = customers.find(c => c.id === selectedCustomerId);
+      if (customer) {
+        setDeliveryAddress(customer.address || "");
+        setDeliveryPincode(customer.pincode || "");
+      }
+    }
+  }, [selectedCustomerId, customers]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const custId = params.get("customerId");
+      if (custId) {
+        setSelectedCustomerId(custId);
+        setShowPlaceOrderModal(true);
+        // Clear query param so it doesn't reopen if refreshed
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, "", newUrl);
+      }
+    }
+  }, [session]);
+
+  const handleCustomerChange = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setDeliveryAddress(customer.address || "");
+      setDeliveryPincode(customer.pincode || "");
+    } else {
+      setDeliveryAddress("");
+      setDeliveryPincode("");
+    }
+  };
+
+  const getSelectedItems = () => {
+    return Object.entries(orderItems)
+      .filter(([_, qty]) => qty > 0)
+      .map(([id, qty]) => {
+        const product = products.find(p => p.id === id)!;
+        return {
+          productId: id,
+          quantity: qty,
+          name: product?.name || "",
+          size: product?.size || "",
+          pricePerUnit: product?.pricePerUnit || 0
+        };
+      });
+  };
+
+  const handlePlaceOrderOnBehalf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomerId) {
+      toast.error("Please select a customer.");
+      return;
+    }
+    const items = getSelectedItems().map(item => ({ productId: item.productId, quantity: item.quantity }));
+    if (items.length === 0) {
+      toast.error("Please add at least one product.");
+      return;
+    }
+    if (!deliveryAddress.trim()) {
+      toast.error("Please enter a delivery address.");
+      return;
+    }
+    if (!deliveryPincode.trim()) {
+      toast.error("Please enter a delivery pincode.");
+      return;
+    }
+
+    setSubmittingOrder(true);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: selectedCustomerId,
+          items,
+          deliveryAddress,
+          deliveryPincode,
+          deliveryTimeSlot,
+          isScheduled,
+          scheduleFrequency: isScheduled ? scheduleFrequency : null
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Order placed successfully on customer's behalf!");
+        setShowPlaceOrderModal(false);
+        setSelectedCustomerId("");
+        setDeliveryAddress("");
+        setDeliveryPincode("");
+        setOrderItems({});
+        setIsScheduled(false);
+        loadData();
+      } else {
+        toast.error(data.error || "Failed to place order.");
+      }
+    } catch (err) {
+      toast.error("Network error.");
+    } finally {
+      setSubmittingOrder(false);
+    }
+  };
 
   const handleAssignPartner = async (orderId: string, partnerId: string) => {
     setUpdatingId(orderId);
@@ -188,14 +333,22 @@ export default function AdminOrders() {
     <div className="space-y-6">
       
       {/* Header */}
-      <div className="border-b border-slate-200 dark:border-sky-950 pb-4">
-        <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-          <ShoppingBag className="text-[#0077B6]" />
-          Order & Dispatch Console
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Review, status-override, and assign active delivery partners to incoming requests.
-        </p>
+      <div className="border-b border-slate-200 dark:border-sky-950 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <ShoppingBag className="text-[#0077B6]" />
+            Order & Dispatch Console
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Review, status-override, and assign active delivery partners to incoming requests.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowPlaceOrderModal(true)}
+          className="px-4 py-2 bg-[#0077B6] hover:bg-[#023E8A] text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5 self-start sm:self-auto"
+        >
+          <Plus size={15} /> Place Order on Behalf
+        </button>
       </div>
 
       {/* Filters */}
@@ -436,6 +589,227 @@ export default function AdminOrders() {
                 </button>
               )}
             </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Place Order on Behalf Modal */}
+      {showPlaceOrderModal && (
+        <div className="fixed inset-0 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center animate-fadeIn p-4">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-6 shadow-2xl space-y-4 animate-scaleUp overflow-y-auto max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-sky-950 pb-3">
+              <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
+                Place Order on Behalf of Customer
+              </h3>
+              <button 
+                onClick={() => {
+                  setShowPlaceOrderModal(false);
+                  setSelectedCustomerId("");
+                  setDeliveryAddress("");
+                  setDeliveryPincode("");
+                  setOrderItems({});
+                  setIsScheduled(false);
+                }}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {loadingModalData ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <Loader2 className="w-6 h-6 text-[#0077B6] animate-spin" />
+                <p className="text-xs text-slate-400">Loading catalog and customers...</p>
+              </div>
+            ) : (
+              <form onSubmit={handlePlaceOrderOnBehalf} className="space-y-4 text-xs">
+                
+                {/* 1. Customer Selection */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">
+                    Select Customer
+                  </label>
+                  <select
+                    value={selectedCustomerId}
+                    onChange={(e) => handleCustomerChange(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800 text-sm focus:border-[#0077B6] outline-none transition dark:text-slate-200"
+                  >
+                    <option value="">-- Choose a Customer --</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedCustomerId && (
+                  <>
+                    {/* 2. Delivery Details (Pincode & Address) */}
+                    <div className="p-4 bg-slate-50/50 dark:bg-slate-800/10 border border-slate-100 dark:border-sky-950 rounded-xl space-y-3">
+                      <h4 className="font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider text-[10px]">
+                        Delivery Information
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-semibold text-slate-500">Pincode (Locked to region)</label>
+                          <input
+                            type="text"
+                            value={deliveryPincode}
+                            disabled
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-semibold text-slate-500">Preferred Time Slot</label>
+                          <select
+                            value={deliveryTimeSlot}
+                            onChange={(e) => setDeliveryTimeSlot(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-white dark:bg-slate-800 text-slate-755 dark:text-slate-200 outline-none"
+                          >
+                            <option>08:00 AM - 12:00 PM</option>
+                            <option>12:00 PM - 04:00 PM</option>
+                            <option>04:00 PM - 08:00 PM</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-500">Delivery Address</label>
+                        <textarea
+                          value={deliveryAddress}
+                          onChange={(e) => setDeliveryAddress(e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-white dark:bg-slate-800 text-slate-755 dark:text-slate-200 outline-none focus:border-[#0077B6]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 3. Product Selection & Quantities */}
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider text-[10px]">
+                        Select Bottled Water & Quantity
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {products.map((p) => {
+                          const qty = orderItems[p.id] || 0;
+                          return (
+                            <div 
+                              key={p.id} 
+                              className={`p-3 border rounded-xl flex items-center justify-between transition ${
+                                qty > 0 ? "border-[#0077B6] bg-sky-50/10" : "border-slate-100 dark:border-sky-950 bg-white dark:bg-slate-900"
+                              }`}
+                            >
+                              <div className="space-y-1">
+                                <span className="text-[9px] font-bold bg-sky-100 text-sky-850 dark:bg-sky-950/50 dark:text-sky-400 px-1.5 py-0.5 rounded">
+                                  {p.size}
+                                </span>
+                                <h5 className="font-bold text-slate-800 dark:text-slate-200">{p.name}</h5>
+                                <p className="text-[10px] text-[#0077B6] font-bold">₹{p.pricePerUnit.toFixed(2)}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOrderItems(prev => ({
+                                      ...prev,
+                                      [p.id]: Math.max(0, (prev[p.id] || 0) - 1)
+                                    }));
+                                  }}
+                                  className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 flex items-center justify-center font-bold text-slate-600 dark:text-slate-400 transition"
+                                >
+                                  -
+                                </button>
+                                <span className="w-5 text-center font-bold text-slate-800 dark:text-slate-200">{qty}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOrderItems(prev => ({
+                                      ...prev,
+                                      [p.id]: Math.min(p.stock, (prev[p.id] || 0) + 1)
+                                    }));
+                                  }}
+                                  className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 flex items-center justify-center font-bold text-slate-600 dark:text-slate-400 transition"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 4. Scheduling options */}
+                    <div className="p-4 bg-slate-50/50 dark:bg-slate-800/10 border border-slate-100 dark:border-sky-950 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-bold text-slate-700 dark:text-slate-300">Set as Subscription (Recurring)</h4>
+                          <p className="text-[10px] text-slate-400">Automatically repeat this order periodically.</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={isScheduled}
+                          onChange={(e) => setIsScheduled(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-200"
+                        />
+                      </div>
+                      {isScheduled && (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-semibold text-slate-500">Subscription Frequency</label>
+                          <select
+                            value={scheduleFrequency}
+                            onChange={(e) => setScheduleFrequency(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none"
+                          >
+                            <option value="WEEKLY">Weekly</option>
+                            <option value="BIWEEKLY">Bi-weekly</option>
+                            <option value="MONTHLY">Monthly</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 5. Summary & Submit */}
+                    <div className="border-t border-slate-100 dark:border-sky-950 pt-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-slate-400">Total Price Calculated:</p>
+                        <p className="text-lg font-extrabold text-[#0077B6] dark:text-sky-400">
+                          ₹{getSelectedItems().reduce((sum, item) => sum + item.pricePerUnit * item.quantity, 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPlaceOrderModal(false);
+                            setSelectedCustomerId("");
+                            setDeliveryAddress("");
+                            setDeliveryPincode("");
+                            setOrderItems({});
+                            setIsScheduled(false);
+                          }}
+                          className="px-4 py-2 border border-slate-100 dark:border-sky-950 rounded-xl font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={submittingOrder}
+                          className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-md transition flex items-center justify-center"
+                        >
+                          {submittingOrder ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm & Place"}
+                        </button>
+                      </div>
+                    </div>
+
+                  </>
+                )}
+
+              </form>
+            )}
 
           </div>
         </div>
