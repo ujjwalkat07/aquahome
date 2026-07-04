@@ -22,7 +22,8 @@ export async function PATCH(
       where: { id },
       include: {
         user: { select: { id: true, name: true, email: true, phone: true } },
-        deliveryPartner: { select: { id: true, name: true, email: true, phone: true } }
+        deliveryPartner: { select: { id: true, name: true, email: true, phone: true } },
+        payments: true
       }
     });
 
@@ -126,6 +127,24 @@ export async function PATCH(
         userId: order.userId,
         title: "Order Out for Delivery",
         message: `Your AquaHome delivery is out for delivery! Time slot: ${order.deliveryTimeSlot}.`,
+        email: order.user.email,
+        phone: order.user.phone
+      });
+    }
+
+    // Handle notification upon status update to DELIVERED
+    if (status === "DELIVERED" || (updateData.status === "DELIVERED" && order.status !== "DELIVERED")) {
+      const partnerName = updatedOrder.deliveryPartner?.name || session.user?.name || "Delivery Partner";
+      const paymentAmount = order.payments?.[0]?.amount || 0;
+      const paymentStatus = order.payments?.[0]?.status || "UNPAID";
+      const paymentMsg = paymentStatus === "PAID"
+        ? `Your payment of ₹${paymentAmount.toFixed(2)} was received successfully.`
+        : `Total amount due: ₹${paymentAmount.toFixed(2)}. Please make offline payment to the delivery partner or transfer to the account.`;
+
+      await notifyUser({
+        userId: order.userId,
+        title: "Order Delivered",
+        message: `Your AquaHome order (#${order.id.slice(0, 8)}) has been successfully delivered by ${partnerName}. ${paymentMsg}`,
         email: order.user.email,
         phone: order.user.phone
       });

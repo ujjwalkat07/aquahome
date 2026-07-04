@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       where: whereClause,
       include: {
         user: { select: { name: true, email: true, phone: true } },
-        order: { select: { status: true, deliveryTimeSlot: true, createdAt: true } }
+        order: { select: { status: true, deliveryTimeSlot: true, createdAt: true, isScheduled: true, scheduleFrequency: true } }
       },
       orderBy: { createdAt: "desc" }
     });

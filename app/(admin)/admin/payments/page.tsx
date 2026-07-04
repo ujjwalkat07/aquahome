@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Loader2, CreditCard, IndianRupee, CheckCircle2, Clock, Check, X, FileText, Printer, ArrowDown } from "lucide-react";
+import { Loader2, CreditCard, IndianRupee, CheckCircle2, Clock, Check, X, FileText, Printer, ArrowDown, Search, Calendar, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface User {
   name: string;
   email: string;
   phone: string;
+}
+
+interface OrderInfo {
+  status: string;
+  deliveryTimeSlot: string;
+  createdAt: string;
+  isScheduled: boolean;
+  scheduleFrequency: string | null;
 }
 
 interface Payment {
@@ -20,6 +28,7 @@ interface Payment {
   note: string | null;
   createdAt: string;
   user: User;
+  order: OrderInfo;
 }
 
 interface UserSummary {
@@ -37,6 +46,11 @@ export default function AdminPayments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReport, setShowReport] = useState(false);
+
+  // Filters State
+  const [dateFilter, setDateFilter] = useState<"ALL" | "TODAY" | "PAST">("ALL");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "ONETIME" | "RECURRING">("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Form State
   const [recordPaymentId, setRecordPaymentId] = useState<string | null>(null);
@@ -96,11 +110,49 @@ export default function AdminPayments() {
     }
   };
 
+  // Filtered Payments computation
+  const filteredPayments = payments.filter((p) => {
+    // 1. Date Filter
+    let matchesDate = true;
+    const paymentDate = new Date(p.createdAt);
+    const today = new Date();
+    const isToday = paymentDate.toDateString() === today.toDateString();
+    
+    if (dateFilter === "TODAY") {
+      matchesDate = isToday;
+    } else if (dateFilter === "PAST") {
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      matchesDate = paymentDate < startOfToday;
+    }
+
+    // 2. Type Filter (Recurring vs One-time)
+    let matchesType = true;
+    if (typeFilter === "ONETIME") {
+      matchesType = !p.order?.isScheduled;
+    } else if (typeFilter === "RECURRING") {
+      matchesType = !!p.order?.isScheduled;
+    }
+
+    // 3. Search Query
+    let matchesSearch = true;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      matchesSearch =
+        p.user.name.toLowerCase().includes(q) ||
+        p.user.email.toLowerCase().includes(q) ||
+        p.user.phone.includes(q) ||
+        p.id.toLowerCase().includes(q) ||
+        (p.order?.deliveryTimeSlot || "").toLowerCase().includes(q);
+    }
+
+    return matchesDate && matchesType && matchesSearch;
+  });
+
   // Compile user summaries for the report
   const getUserSummaries = (): UserSummary[] => {
     const map = new Map<string, UserSummary>();
 
-    payments.forEach((p) => {
+    filteredPayments.forEach((p) => {
       const email = p.user.email;
       let existing = map.get(email);
 
@@ -126,11 +178,11 @@ export default function AdminPayments() {
     return Array.from(map.values());
   };
 
-  const totalOutstanding = payments
+  const totalOutstanding = filteredPayments
     .filter((p) => p.status === "UNPAID")
     .reduce((sum, p) => sum + p.amount, 0);
 
-  const totalCollected = payments
+  const totalCollected = filteredPayments
     .filter((p) => p.status === "PAID")
     .reduce((sum, p) => sum + p.amount, 0);
 
@@ -165,6 +217,66 @@ export default function AdminPayments() {
         >
           <FileText size={16} /> {showReport ? "Show Transactions Log" : "Generate Balance Report"}
         </button>
+      </div>
+
+      {/* Filters Control Panel */}
+      <div className="bg-slate-50/50 dark:bg-slate-800/10 border border-slate-100 dark:border-sky-950/60 rounded-2xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full md:flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            type="text"
+            placeholder="Search by customer name, phone, email or ID..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-sky-950 bg-white dark:bg-slate-900 text-xs focus:border-[#0077B6] outline-none transition"
+          />
+        </div>
+        
+        <div className="flex flex-wrap w-full md:w-auto gap-3 items-center">
+          {/* Date Filter */}
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-sky-950 px-2.5 py-1.5 rounded-xl">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Date:</span>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value as any)}
+              className="text-xs font-semibold bg-transparent border-none outline-none dark:text-slate-200 cursor-pointer"
+            >
+              <option value="ALL">All Time</option>
+              <option value="TODAY">Today (Daily)</option>
+              <option value="PAST">Past Billing</option>
+            </select>
+          </div>
+
+          {/* Type Filter */}
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-sky-950 px-2.5 py-1.5 rounded-xl">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Type:</span>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as any)}
+              className="text-xs font-semibold bg-transparent border-none outline-none dark:text-slate-200 cursor-pointer"
+            >
+              <option value="ALL">All Types</option>
+              <option value="ONETIME">One-time Orders</option>
+              <option value="RECURRING">Recurring (Subscription)</option>
+            </select>
+          </div>
+
+          {/* Reset Filters */}
+          {(dateFilter !== "ALL" || typeFilter !== "ALL" || searchQuery) && (
+            <button
+              onClick={() => {
+                setDateFilter("ALL");
+                setTypeFilter("ALL");
+                setSearchQuery("");
+              }}
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-xl transition text-xs font-bold flex items-center gap-1"
+              title="Reset Filters"
+            >
+              <RefreshCw size={13} className="animate-spin-once" />
+              Reset
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Grid of stats */}
@@ -251,22 +363,31 @@ export default function AdminPayments() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-950 text-xs">
-                {payments.length === 0 ? (
+                {filteredPayments.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-slate-400 italic">No invoices found.</td>
                   </tr>
                 ) : (
-                  payments.map((p) => {
+                  filteredPayments.map((p) => {
                     const isPaid = p.status === "PAID";
                     return (
                       <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                         <td className="p-4">
-                          <p className="font-extrabold text-slate-400 uppercase">#{p.id.slice(0, 8)}</p>
-                          {isPaid && p.method && (
-                            <span className="text-[9px] font-bold text-green-600 bg-green-50 dark:bg-green-950/40 px-1 py-0.5 rounded">
-                              {p.method}
-                            </span>
-                          )}
+                          <div className="flex flex-col gap-1 items-start">
+                            <p className="font-extrabold text-slate-400 uppercase">#{p.id.slice(0, 8)}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {isPaid && p.method && (
+                                <span className="text-[9px] font-bold text-green-600 bg-green-50 dark:bg-green-950/40 px-1 py-0.5 rounded">
+                                  {p.method}
+                                </span>
+                              )}
+                              {p.order?.isScheduled && (
+                                <span className="text-[9px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded">
+                                  Recurring ({p.order.scheduleFrequency})
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="p-4">
                           <p className="font-bold text-slate-800 dark:text-slate-200">{p.user.name}</p>
