@@ -34,6 +34,10 @@
   --ring: #00B4D8;
 }
 
+html, body {
+  touch-action: manipulation;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);

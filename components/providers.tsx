@@ -24,6 +24,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setTheme(systemTheme);
     }
     setMounted(true);
+
+    // Prevent Safari pinch-zoom gestures on mobile devices
+    const handleGestureStart = (e: Event) => {
+      e.preventDefault();
+    };
+    document.addEventListener("gesturestart", handleGestureStart);
+
+    return () => {
+      document.removeEventListener("gesturestart", handleGestureStart);
+    };
   }, []);
 
   useEffect(() => {

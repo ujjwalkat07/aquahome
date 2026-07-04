@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -8,6 +8,13 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "AquaHome - Mineral Water Delivery Management System",
   description: "Efficiently manage home and office mineral water bottle deliveries. Track schedules, orders, and payments with QR confirmation.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
