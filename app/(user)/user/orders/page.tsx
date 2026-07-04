@@ -80,7 +80,10 @@ export default function MyOrders() {
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+ 
   const fetchOrders = async () => {
     try {
       const res = await fetch("/api/orders");
@@ -106,20 +109,27 @@ export default function MyOrders() {
     setExpandedOrderId(prev => (prev === id ? null : id));
   };
 
-  const handleCancelOrder = async (orderId: string) => {
-    const reason = prompt("Please enter a reason for cancelling this order:");
-    if (reason === null) return; // Cancelled prompt
-    if (!reason.trim()) {
+  const handleCancelClick = (orderId: string) => {
+    setCancelOrderId(orderId);
+    setCancelReason("");
+    setCancelModalOpen(true);
+  };
+
+  const handleCancelSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cancelOrderId) return;
+    if (!cancelReason.trim()) {
       toast.error("Reason is required to cancel the order.");
       return;
     }
 
-    setCancellingId(orderId);
+    setCancellingId(cancelOrderId);
+    setCancelModalOpen(false);
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
+      const res = await fetch(`/api/orders/${cancelOrderId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "CANCELLED", cancelReason: reason })
+        body: JSON.stringify({ status: "CANCELLED", cancelReason: cancelReason })
       });
 
       if (res.ok) {
@@ -134,6 +144,8 @@ export default function MyOrders() {
       toast.error("Network error. Could not cancel order.");
     } finally {
       setCancellingId(null);
+      setCancelOrderId(null);
+      setCancelReason("");
     }
   };
 
@@ -287,7 +299,7 @@ export default function MyOrders() {
 
                         {order.status === "PENDING" && (
                           <button
-                            onClick={() => handleCancelOrder(order.id)}
+                            onClick={() => handleCancelClick(order.id)}
                             disabled={cancellingId === order.id}
                             className="mt-2 px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/30 border border-red-100 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5"
                           >
@@ -337,6 +349,88 @@ export default function MyOrders() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Cancellation Reason Modal Popup */}
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-scaleUp">
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <AlertCircle className="text-red-500" size={18} />
+                Cancel Order
+              </h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Please let us know why you are cancelling order <span className="font-mono text-slate-600 dark:text-slate-300">#{cancelOrderId?.slice(0, 8)}</span>. This helps us improve our service.
+              </p>
+            </div>
+
+            {/* Quick Reasons Chips */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Quick Reasons
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Changed my mind",
+                  "Incorrect delivery address",
+                  "Slot timing not suitable",
+                  "Ordered by mistake",
+                  "Found better alternative",
+                ].map((reasonOption) => (
+                  <button
+                    key={reasonOption}
+                    type="button"
+                    onClick={() => setCancelReason(reasonOption)}
+                    className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold border transition ${
+                      cancelReason === reasonOption
+                        ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-950/30 dark:border-red-900 dark:text-red-400"
+                        : "bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800/40 dark:border-slate-800 dark:text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-850"
+                    }`}
+                  >
+                    {reasonOption}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <form onSubmit={handleCancelSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Detailed Reason
+                </label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Tell us more about the cancellation reason..."
+                  rows={3}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-slate-800 dark:text-slate-100 focus:border-red-500 outline-none transition resize-none"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCancelModalOpen(false);
+                    setCancelOrderId(null);
+                    setCancelReason("");
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-slate-550 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 transition"
+                >
+                  Keep Order
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-1.5"
+                >
+                  Confirm Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
