@@ -74,3 +74,23 @@ body {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(0, 150, 199, 0.2);
 }
+
+/* html5-qrcode scanner overrides */
+#qr-scanner-container {
+  border: none !important;
+}
+#qr-scanner-container video {
+  border-radius: 12px;
+  object-fit: cover;
+}
+#qr-scanner-container img[alt="Info icon"] {
+  display: none !important;
+}
+/* Hide the default library header bar */
+#qr-scanner-container > div:first-child {
+  display: none !important;
+}
+/* Style the scan region */
+#qr-shaded-region {
+  border-color: #00B4D8 !important;
+}
