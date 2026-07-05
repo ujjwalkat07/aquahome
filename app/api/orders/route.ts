@@ -223,8 +223,7 @@ export async function POST(req: Request) {
       });
 
       // Generate a unique QR code string using the order details
-      const hash = Math.random().toString(36).substring(2, 10);
-      const qrCodeString = `ORDER-${order.id}-${Date.now()}-${hash}`;
+      const qrCodeString = `ORDER-${order.id}`;
 
       // Update Order with QR code
       const updatedOrder = await tx.order.update({

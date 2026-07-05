@@ -21,6 +21,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { qrCode, location } = body;
 
+    console.log("[SCAN API] Received QR Code payload:", qrCode, "from location:", location);
+
     if (!qrCode) {
       return NextResponse.json({ error: "QR Code string is required." }, { status: 400 });
     }

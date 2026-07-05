@@ -45,10 +45,20 @@ export default function QRScanner() {
     }
   }, []);
 
-  const handleScan = async (data: { text: string } | null) => {
-    if (data && data.text && scanning && !verifying) {
+  const handleScan = async (data: any) => {
+    if (!data) return;
+    console.log("Scanner raw payload:", data);
+    
+    let scannedText = "";
+    if (typeof data === "string") {
+      scannedText = data;
+    } else if (data && typeof data === "object" && typeof data.text === "string") {
+      scannedText = data.text;
+    }
+    
+    if (scannedText && scanning && !verifying) {
       setScanning(false);
-      await verifyQRCode(data.text);
+      await verifyQRCode(scannedText);
     }
   };
 
