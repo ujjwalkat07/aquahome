@@ -11,7 +11,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch the admin's details (specifically pincode) to scope users list
+    const { searchParams } = new URL(req.url);
+    const role = searchParams.get("role");
+
     const adminUser = await prisma.user.findUnique({
       where: { id: (session.user as any).id },
       select: { pincode: true }
@@ -21,14 +23,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Admin not found" }, { status: 404 });
     }
 
-    const pincode = adminUser.pincode;
-
-    const { searchParams } = new URL(req.url);
-    const role = searchParams.get("role"); // e.g. CUSTOMER, DELIVERY, ADMIN
-    
-    let whereClause: any = {
-      pincode: pincode
-    };
+    let whereClause: any = {};
+    if (adminUser.pincode) {
+      whereClause.pincode = adminUser.pincode;
+    }
     if (role) {
       whereClause.role = role;
     }
@@ -126,15 +124,15 @@ export async function POST(req: Request) {
       if (!targetUser) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
-      if (targetUser.pincode && targetUser.pincode !== adminPincode) {
+      if (adminPincode && targetUser.pincode && targetUser.pincode !== adminPincode) {
         return NextResponse.json({ error: "Access denied: User is in a different pincode region." }, { status: 403 });
       }
 
       const userPincode = pincode !== undefined ? (pincode || null) : targetUser.pincode;
-      if (userPincode && userPincode !== adminPincode) {
+      if (adminPincode && userPincode && userPincode !== adminPincode) {
         return NextResponse.json({ error: "Access denied: Cannot assign a different pincode region." }, { status: 403 });
       }
-
+      
       let updateData: any = {
         name,
         email,
@@ -170,7 +168,7 @@ export async function POST(req: Request) {
       }
 
       const userPincode = pincode || null;
-      if (userPincode && userPincode !== adminPincode) {
+      if (adminPincode && userPincode && userPincode !== adminPincode) {
         return NextResponse.json({ error: "Access denied: Cannot register users in a different pincode region." }, { status: 403 });
       }
 

@@ -23,7 +23,6 @@ export async function GET(req: Request) {
     if (role === "CUSTOMER") {
       whereClause.userId = currentUserId;
     } else if (role === "ADMIN") {
-      // Fetch the admin's details (specifically pincode) to scope payments
       const adminUser = await prisma.user.findUnique({
         where: { id: currentUserId },
         select: { pincode: true }
@@ -32,9 +31,14 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Admin not found" }, { status: 404 });
       }
 
-      whereClause.order = {
-        deliveryPincode: adminUser.pincode
-      };
+      if (adminUser.pincode) {
+        whereClause.order = {
+          OR: [
+            { deliveryPincode: adminUser.pincode },
+            { user: { pincode: adminUser.pincode } }
+          ]
+        };
+      }
 
       if (userId) {
         whereClause.userId = userId;
@@ -95,7 +99,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Customer not found." }, { status: 404 });
       }
 
-      if (customer.pincode && customer.pincode !== adminUser.pincode) {
+      // Allow admin if admin pincode matches customer pincode
+      if (adminUser.pincode && customer.pincode && customer.pincode !== adminUser.pincode) {
         return NextResponse.json({ error: "Access denied: Customer belongs to a different pincode region." }, { status: 403 });
       }
 
@@ -103,9 +108,14 @@ export async function POST(req: Request) {
         where: {
           userId: userId,
           status: "UNPAID",
-          order: {
-            deliveryPincode: adminUser.pincode
-          }
+          order: adminUser.pincode
+            ? {
+                OR: [
+                  { deliveryPincode: adminUser.pincode },
+                  { user: { pincode: adminUser.pincode } }
+                ]
+              }
+            : {}
         }
       });
 
@@ -142,7 +152,7 @@ export async function POST(req: Request) {
       const payment = await prisma.payment.findUnique({
         where: { id: paymentId },
         include: {
-          user: { select: { id: true, name: true, email: true, phone: true } },
+          user: { select: { id: true, name: true, email: true, phone: true, pincode: true } },
           order: { select: { deliveryPincode: true } }
         }
       });
@@ -151,8 +161,13 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Payment record not found." }, { status: 404 });
       }
 
-      if (payment.order.deliveryPincode !== adminUser.pincode) {
-        return NextResponse.json({ error: "Access denied: Payment belongs to a different pincode region." }, { status: 403 });
+      // Check if admin is allowed to collect this payment (if order pincode or customer pincode matches)
+      if (adminUser.pincode) {
+        const matchesOrderPincode = payment.order.deliveryPincode === adminUser.pincode;
+        const matchesUserPincode = payment.user.pincode === adminUser.pincode;
+        if (!matchesOrderPincode && !matchesUserPincode) {
+          return NextResponse.json({ error: "Access denied: Payment belongs to a different pincode region." }, { status: 403 });
+        }
       }
 
       if (payment.status === "PAID") {

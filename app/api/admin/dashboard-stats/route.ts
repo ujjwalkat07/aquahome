@@ -23,6 +23,14 @@ export async function GET() {
     }
 
     const pincode = adminUser.pincode;
+    const pincodeFilter = pincode
+      ? {
+          OR: [
+            { deliveryPincode: pincode },
+            { user: { pincode: pincode } }
+          ]
+        }
+      : {};
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -30,43 +38,43 @@ export async function GET() {
     const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-    // 1. Total active orders today in the admin's pincode (Created today, not CANCELLED)
+    // 1. Total active orders today (Created today, not CANCELLED)
     const activeOrdersToday = await prisma.order.count({
       where: {
         createdAt: { gte: startOfToday },
         status: { in: ["PENDING", "IN_PROGRESS", "DELIVERED"] },
-        deliveryPincode: pincode
+        ...pincodeFilter
       }
     });
 
-    // 2. Pending deliveries count in the admin's pincode (PENDING or IN_PROGRESS)
+    // 2. Pending deliveries count (PENDING or IN_PROGRESS)
     const pendingDeliveriesCount = await prisma.order.count({
       where: {
         status: { in: ["PENDING", "IN_PROGRESS"] },
-        deliveryPincode: pincode
+        ...pincodeFilter
       }
     });
 
-    // 3. Unpaid invoices total in the admin's pincode
+    // 3. Unpaid invoices total
     const unpaidPayments = await prisma.payment.findMany({
       where: {
         status: "UNPAID",
         order: {
           status: { not: "CANCELLED" },
-          deliveryPincode: pincode
+          ...pincodeFilter
         }
       },
       select: { amount: true }
     });
     const unpaidInvoicesTotal = unpaidPayments.reduce((sum, p) => sum + p.amount, 0);
 
-    // 4. Revenue this month vs last month in the admin's pincode (Payments PAID this month vs last month)
+    // 4. Revenue this month vs last month (Payments PAID this month vs last month)
     const paidThisMonth = await prisma.payment.findMany({
       where: {
         status: "PAID",
         paidAt: { gte: startOfThisMonth, lt: startOfNextMonth },
         order: {
-          deliveryPincode: pincode
+          ...pincodeFilter
         }
       },
       select: { amount: true }
@@ -78,7 +86,7 @@ export async function GET() {
         status: "PAID",
         paidAt: { gte: startOfLastMonth, lt: startOfThisMonth },
         order: {
-          deliveryPincode: pincode
+          ...pincodeFilter
         }
       },
       select: { amount: true }

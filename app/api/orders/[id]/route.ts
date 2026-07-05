@@ -51,8 +51,13 @@ export async function GET(
       if (!adminUser) {
         return NextResponse.json({ error: "Admin not found" }, { status: 404 });
       }
-      if (order.deliveryPincode !== adminUser.pincode) {
-        return NextResponse.json({ error: "Access denied: Order belongs to a different pincode region" }, { status: 403 });
+
+      if (adminUser.pincode) {
+        const matchesOrderPincode = order.deliveryPincode === adminUser.pincode;
+        const matchesUserPincode = order.user?.pincode === adminUser.pincode;
+        if (!matchesOrderPincode && !matchesUserPincode) {
+          return NextResponse.json({ error: "Access denied: Order belongs to a different pincode region" }, { status: 403 });
+        }
       }
     }
 

@@ -21,7 +21,7 @@ export async function PATCH(
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
-        user: { select: { id: true, name: true, email: true, phone: true } },
+        user: { select: { id: true, name: true, email: true, phone: true, pincode: true } },
         deliveryPartner: { select: { id: true, name: true, email: true, phone: true } },
         payments: true
       }
@@ -61,8 +61,13 @@ export async function PATCH(
       if (!adminUser) {
         return NextResponse.json({ error: "Admin not found" }, { status: 404 });
       }
-      if (order.deliveryPincode !== adminUser.pincode) {
-        return NextResponse.json({ error: "Access denied: Order belongs to a different pincode region" }, { status: 403 });
+
+      if (adminUser.pincode) {
+        const matchesOrderPincode = order.deliveryPincode === adminUser.pincode;
+        const matchesUserPincode = order.user?.pincode === adminUser.pincode;
+        if (!matchesOrderPincode && !matchesUserPincode) {
+          return NextResponse.json({ error: "Access denied: Order belongs to a different pincode region" }, { status: 403 });
+        }
       }
     }
 
