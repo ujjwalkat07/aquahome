@@ -331,12 +331,17 @@ export default function MyOrders() {
                           ) : (
                             <div className="flex flex-col items-center gap-2">
                               {order.qrCode ? (
-                                <OrderQRCode text={order.qrCode} />
+                                <div className="flex flex-col items-center gap-1.5">
+                                  <OrderQRCode text={order.qrCode} />
+                                  <code className="text-[9px] text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-350 px-2 py-0.5 rounded select-all font-mono break-all max-w-[170px] text-center">
+                                    {order.qrCode}
+                                  </code>
+                                </div>
                               ) : (
                                 <Loader2 className="w-6 h-6 animate-spin text-[#0077B6]" />
                               )}
-                              <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center max-w-[170px] leading-tight mt-1">
-                                Delivery agent will scan this code to confirm hand-off and complete delivery.
+                              <p className="text-[10px] text-slate-400 dark:text-slate-550 text-center max-w-[170px] leading-tight mt-1">
+                                Scan the QR code or read the code above to the delivery agent to confirm delivery.
                               </p>
                             </div>
                           )}

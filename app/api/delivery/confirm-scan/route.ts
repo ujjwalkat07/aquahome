@@ -19,24 +19,36 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { qrCode, location } = body;
+    const { qrCode, orderId, location } = body;
 
-    if (!qrCode) {
-      return NextResponse.json({ error: "QR Code string is required." }, { status: 400 });
+    if (!qrCode && !orderId) {
+      return NextResponse.json({ error: "QR Code or Order ID is required." }, { status: 400 });
     }
 
-    // Find order by QR code
-    const order = await prisma.order.findUnique({
-      where: { qrCode },
-      include: {
-        user: { select: { id: true, name: true, email: true, phone: true } },
-        orderItems: { include: { product: true } },
-        payments: true
-      }
-    });
+    // Find order by QR code or Order ID
+    let order;
+    if (qrCode) {
+      order = await prisma.order.findUnique({
+        where: { qrCode },
+        include: {
+          user: { select: { id: true, name: true, email: true, phone: true } },
+          orderItems: { include: { product: true } },
+          payments: true
+        }
+      });
+    } else {
+      order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          user: { select: { id: true, name: true, email: true, phone: true } },
+          orderItems: { include: { product: true } },
+          payments: true
+        }
+      });
+    }
 
     if (!order) {
-      return NextResponse.json({ error: "Invalid QR Code. Order not found." }, { status: 404 });
+      return NextResponse.json({ error: "Order not found." }, { status: 404 });
     }
 
     if (order.status === "DELIVERED") {

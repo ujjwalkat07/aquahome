@@ -80,6 +80,33 @@ export default function QRScanner() {
     }
   };
 
+  const confirmManually = async () => {
+    if (!targetOrderId) return;
+    setVerifying(true);
+    try {
+      const res = await fetch("/api/delivery/confirm-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: targetOrderId,
+          location: "Manual delivery boy confirm"
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Delivery confirmed manually!");
+        setSuccessData(data.order);
+      } else {
+        toast.error(data.error || "Manual confirmation failed.");
+      }
+    } catch (err) {
+      toast.error("Network connection error. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualCode.trim()) return;
@@ -192,6 +219,15 @@ export default function QRScanner() {
                   <Keyboard size={13} /> Manual Code
                 </button>
               </div>
+              
+              {targetOrderId && (
+                <button
+                  onClick={confirmManually}
+                  className="w-full py-3 border border-dashed border-[#00B4D8] hover:bg-sky-50 dark:hover:bg-slate-800/20 text-[#00B4D8] dark:text-[#00B4D8] rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 mt-2"
+                >
+                  <CheckCircle size={16} /> Problems scanning? Confirm Delivery Manually
+                </button>
+              )}
             </div>
           ) : (
             
