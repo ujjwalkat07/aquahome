@@ -95,7 +95,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Customer not found." }, { status: 404 });
       }
 
-      if (customer.pincode !== adminUser.pincode) {
+      if (customer.pincode && customer.pincode !== adminUser.pincode) {
         return NextResponse.json({ error: "Access denied: Customer belongs to a different pincode region." }, { status: 403 });
       }
 

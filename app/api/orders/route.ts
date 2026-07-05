@@ -90,11 +90,12 @@ export async function POST(req: Request) {
       customerId // optional, for admin placing order on behalf of customer
     } = body;
 
-    if (!items || items.length === 0 || !deliveryAddress || !deliveryPincode || !deliveryTimeSlot) {
+    if (!items || items.length === 0 || !deliveryAddress || !deliveryTimeSlot) {
       return NextResponse.json({ error: "Missing required order details" }, { status: 400 });
     }
 
     let targetUserId = currentUserId;
+    let finalDeliveryPincode = deliveryPincode;
 
     if (customerId) {
       if (currentUserRole !== "ADMIN") {
@@ -110,6 +111,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Admin profile not found." }, { status: 404 });
       }
 
+      if (!finalDeliveryPincode) {
+        finalDeliveryPincode = adminUser.pincode;
+      }
+
       // Fetch target customer details
       const targetCustomer = await prisma.user.findUnique({
         where: { id: customerId },
@@ -119,15 +124,26 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Target customer not found." }, { status: 404 });
       }
 
-      if (targetCustomer.pincode !== adminUser.pincode) {
+      if (targetCustomer.pincode && targetCustomer.pincode !== adminUser.pincode) {
         return NextResponse.json({ error: "Access denied: Customer belongs to a different pincode region." }, { status: 403 });
       }
 
-      if (deliveryPincode !== adminUser.pincode) {
+      if (finalDeliveryPincode && finalDeliveryPincode !== adminUser.pincode) {
         return NextResponse.json({ error: "Delivery pincode must match customer's regional pincode." }, { status: 400 });
       }
 
       targetUserId = customerId;
+    } else {
+      // Customer placing their own order
+      if (!finalDeliveryPincode) {
+        const customerUser = await prisma.user.findUnique({
+          where: { id: currentUserId },
+          select: { pincode: true }
+        });
+        if (customerUser) {
+          finalDeliveryPincode = customerUser.pincode;
+        }
+      }
     }
 
     // 1. Fetch products and calculate total cost
@@ -163,7 +179,7 @@ export async function POST(req: Request) {
           status: "PENDING",
           deliveryTimeSlot,
           deliveryAddress,
-          deliveryPincode,
+          deliveryPincode: finalDeliveryPincode || null,
           isScheduled: !!isScheduled,
           scheduleFrequency: isScheduled ? scheduleFrequency : null,
         }

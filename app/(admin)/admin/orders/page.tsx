@@ -195,10 +195,6 @@ export default function AdminOrders() {
       toast.error("Please enter a delivery address.");
       return;
     }
-    if (!deliveryPincode.trim()) {
-      toast.error("Please enter a delivery pincode.");
-      return;
-    }
 
     setSubmittingOrder(true);
     try {
@@ -654,12 +650,13 @@ export default function AdminOrders() {
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="text-[10px] font-semibold text-slate-500">Pincode (Locked to region)</label>
+                          <label className="text-[10px] font-semibold text-slate-500">Delivery Pincode</label>
                           <input
                             type="text"
                             value={deliveryPincode}
-                            disabled
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed outline-none"
+                            onChange={(e) => setDeliveryPincode(e.target.value)}
+                            placeholder="Optional pincode"
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:border-[#0077B6]"
                           />
                         </div>
                         <div className="space-y-1">

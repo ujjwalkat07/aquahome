@@ -108,10 +108,6 @@ export default function PlaceOrder() {
       toast.error("Please provide a delivery address.");
       return;
     }
-    if (!deliveryPincode.trim()) {
-      toast.error("Please provide a delivery area pincode.");
-      return;
-    }
 
     setSubmitting(true);
     try {

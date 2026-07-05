@@ -61,7 +61,7 @@ export async function PATCH(req: Request) {
     if (name) updateData.name = name;
     if (phone) updateData.phone = phone;
     if (address) updateData.address = address;
-    if (pincode) updateData.pincode = pincode;
+    if (pincode !== undefined) updateData.pincode = pincode || null;
 
     // Handle Password Change
     if (newPassword) {

@@ -126,12 +126,12 @@ export async function POST(req: Request) {
       if (!targetUser) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
-      if (targetUser.pincode !== adminPincode) {
+      if (targetUser.pincode && targetUser.pincode !== adminPincode) {
         return NextResponse.json({ error: "Access denied: User is in a different pincode region." }, { status: 403 });
       }
 
-      const userPincode = pincode || targetUser.pincode;
-      if (userPincode !== adminPincode) {
+      const userPincode = pincode !== undefined ? (pincode || null) : targetUser.pincode;
+      if (userPincode && userPincode !== adminPincode) {
         return NextResponse.json({ error: "Access denied: Cannot assign a different pincode region." }, { status: 403 });
       }
 
@@ -169,8 +169,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Missing required registration details" }, { status: 400 });
       }
 
-      const userPincode = pincode || adminPincode;
-      if (userPincode !== adminPincode) {
+      const userPincode = pincode || null;
+      if (userPincode && userPincode !== adminPincode) {
         return NextResponse.json({ error: "Access denied: Cannot register users in a different pincode region." }, { status: 403 });
       }
 

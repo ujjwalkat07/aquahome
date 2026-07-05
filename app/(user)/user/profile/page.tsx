@@ -13,7 +13,7 @@ const profileSchema = zod.object({
   name: zod.string().min(2, "Name must be at least 2 characters"),
   phone: zod.string().min(10, "Phone number must be at least 10 digits"),
   address: zod.string().min(5, "Please enter a complete address"),
-  pincode: zod.string().min(4, "Pincode must be at least 4 digits"),
+  pincode: zod.string().optional().or(zod.literal("")),
   oldPassword: zod.string().optional().or(zod.literal("")),
   newPassword: zod.string().optional().or(zod.literal("")),
 }).refine((data) => {

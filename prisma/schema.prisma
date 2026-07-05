@@ -32,7 +32,7 @@ model User {
   email        String    @unique
   phone        String
   address      String
-  pincode      String
+  pincode      String?
   role         Role      @default(CUSTOMER)
   passwordHash String
   isActive     Boolean   @default(true)
@@ -67,7 +67,7 @@ model Order {
   status            OrderStatus @default(PENDING)
   deliveryTimeSlot  String      // e.g. "08:00 AM - 12:00 PM"
   deliveryAddress   String
-  deliveryPincode   String
+  deliveryPincode   String?
   isScheduled       Boolean     @default(false)
   scheduleFrequency String?     // e.g. "WEEKLY", "BIWEEKLY", "MONTHLY"
   qrCode            String?     @unique

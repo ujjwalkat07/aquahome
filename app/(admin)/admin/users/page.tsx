@@ -29,7 +29,7 @@ const userSchema = zod.object({
   email: zod.string().email("Please enter a valid email address"),
   phone: zod.string().min(10, "Phone number must be at least 10 digits"),
   address: zod.string().min(5, "Address must be complete"),
-  pincode: zod.string().min(4, "Pincode is too short"),
+  pincode: zod.string().optional().or(zod.literal("")),
   role: zod.enum(["CUSTOMER", "DELIVERY"]),
   password: zod.string().min(6, "Password must be at least 6 characters"),
 });
@@ -316,7 +316,7 @@ export default function AdminUsers() {
                   </div>
                   <div className="flex items-start gap-2 text-slate-600 dark:text-slate-400">
                     <MapPin size={14} className="mt-0.5 text-slate-400 flex-shrink-0" />
-                    <span><strong>Address:</strong> {selectedUser.address} ({selectedUser.pincode})</span>
+                    <span><strong>Address:</strong> {selectedUser.address}{selectedUser.pincode ? ` (${selectedUser.pincode})` : ""}</span>
                   </div>
                 </div>
 
