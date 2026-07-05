@@ -5,7 +5,8 @@ const nextConfig = {
   typescript: {
     // Similarly, bypass TypeScript compiler warnings/rules if they are style-only
     ignoreBuildErrors: true,
-  }
+  },
+  allowedDevOrigins: ['10.147.27.82'],
 };
 
 const nextConfigWithPWA = withPWA({

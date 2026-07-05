@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Loader2, QrCode, Camera, AlertCircle, CheckCircle, ArrowLeft, Keyboard } from "lucide-react";
@@ -36,6 +36,14 @@ export default function QRScanner() {
   const [scanning, setScanning] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [successData, setSuccessData] = useState<ScannedOrderDetails | null>(null);
+  const [hasCameraSupport, setHasCameraSupport] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const support = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+      setHasCameraSupport(support);
+    }
+  }, []);
 
   const handleScan = async (data: { text: string } | null) => {
     if (data && data.text && scanning && !verifying) {
@@ -144,41 +152,66 @@ export default function QRScanner() {
       {/* Camera Scanning screen */}
       {!verifying && !successData && (
         <div className="space-y-5">
-          <div className="space-y-4">
-            <div className="relative overflow-hidden rounded-2xl border-2 border-[#00B4D8]/30 shadow-md">
-              
-              {/* Visual Camera scanner overlay */}
-              <div className="absolute inset-0 border-[30px] border-black/45 z-10 pointer-events-none flex items-center justify-center">
-                <div className="w-48 h-48 border-2 border-[#00B4D8] rounded-xl relative shadow-[0_0_15px_rgba(0,180,216,0.3)] animate-pulse">
-                  <span className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-sky-400 -mt-1.5 -ml-1.5 rounded-tl-sm" />
-                  <span className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-sky-400 -mt-1.5 -mr-1.5 rounded-tr-sm" />
-                  <span className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-sky-400 -mb-1.5 -ml-1.5 rounded-bl-sm" />
-                  <span className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-sky-400 -mb-1.5 -mr-1.5 rounded-br-sm" />
+          {hasCameraSupport === false ? (
+            <div className="bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-2xl p-6 text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+                <AlertCircle size={24} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-200">Camera Access Blocked</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Your browser blocks camera access on insecure connections (HTTP). To scan QR codes, you must use a secure connection (HTTPS or localhost), or enable the camera flag in your browser settings.
+                </p>
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-left text-xs space-y-2 border border-slate-100 dark:border-sky-950/50">
+                <p className="font-bold text-slate-700 dark:text-slate-350">To fix this on Chrome (Mobile/Desktop):</p>
+                <ol className="list-decimal list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
+                  <li>Open Chrome and navigate to: <code className="font-mono text-rose-500 bg-rose-50 dark:bg-rose-950/30 px-1 rounded select-all">chrome://flags/#unsafely-treat-insecure-origin-as-secure</code></li>
+                  <li>Enable the flag.</li>
+                  <li>Add <code className="font-mono text-rose-500 bg-rose-50 dark:bg-rose-950/30 px-1.5 py-0.5 rounded select-all">http://10.147.27.82:3000</code> (or your current server IP) into the input box.</li>
+                  <li>Relaunch Chrome and refresh this page.</li>
+                </ol>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="relative overflow-hidden rounded-2xl border-2 border-[#00B4D8]/30 shadow-md">
+                
+                {/* Visual Camera scanner overlay */}
+                <div className="absolute inset-0 border-[30px] border-black/45 z-10 pointer-events-none flex items-center justify-center">
+                  <div className="w-48 h-48 border-2 border-[#00B4D8] rounded-xl relative shadow-[0_0_15px_rgba(0,180,216,0.3)] animate-pulse">
+                    <span className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-sky-400 -mt-1.5 -ml-1.5 rounded-tl-sm" />
+                    <span className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-sky-400 -mt-1.5 -mr-1.5 rounded-tr-sm" />
+                    <span className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-sky-400 -mb-1.5 -ml-1.5 rounded-bl-sm" />
+                    <span className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-sky-400 -mb-1.5 -mr-1.5 rounded-br-sm" />
+                  </div>
                 </div>
+
+                {hasCameraSupport === true && (
+                  <QrReader
+                    delay={300}
+                    onError={handleError}
+                    onScan={handleScan}
+                    facingMode="rear"
+                    constraints={{
+                      video: {
+                        facingMode: "environment",
+                        aspectRatio: { ideal: 1 }
+                      }
+                    }}
+                    style={{ width: "100%", height: "260px", objectFit: "cover" }}
+                  />
+                )}
               </div>
 
-              <QrReader
-                delay={300}
-                onError={handleError}
-                onScan={handleScan}
-                facingMode="rear"
-                constraints={{
-                  video: {
-                    facingMode: "environment",
-                    aspectRatio: { ideal: 1 }
-                  }
-                }}
-                style={{ width: "100%", height: "260px", objectFit: "cover" }}
-              />
+              <div className="flex justify-between items-center gap-3">
+                <p className="text-[11px] text-slate-500 leading-tight flex items-start gap-1">
+                  <Camera size={14} className="text-slate-400 flex-shrink-0" />
+                  <span>Align the customer&apos;s order details QR code inside the target frame.</span>
+                </p>
+              </div>
             </div>
-
-            <div className="flex justify-between items-center gap-3">
-              <p className="text-[11px] text-slate-500 leading-tight flex items-start gap-1">
-                <Camera size={14} className="text-slate-400 flex-shrink-0" />
-                <span>Align the customer&apos;s order details QR code inside the target frame.</span>
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
