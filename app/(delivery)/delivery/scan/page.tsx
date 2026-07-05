@@ -36,8 +36,6 @@ export default function QRScanner() {
   const [scanning, setScanning] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [successData, setSuccessData] = useState<ScannedOrderDetails | null>(null);
-  const [manualCode, setManualCode] = useState("");
-  const [showManualInput, setShowManualInput] = useState(false);
 
   const handleScan = async (data: { text: string } | null) => {
     if (data && data.text && scanning && !verifying) {
@@ -48,8 +46,7 @@ export default function QRScanner() {
 
   const handleError = (err: any) => {
     console.error("Camera scanner error:", err);
-    toast.error("Camera access failed or permission denied. Please enter the code manually.");
-    setShowManualInput(true);
+    toast.error("Camera access failed or permission denied. Please check your camera permissions.");
   };
 
   const verifyQRCode = async (codeStr: string) => {
@@ -78,39 +75,6 @@ export default function QRScanner() {
     } finally {
       setVerifying(false);
     }
-  };
-
-  const confirmManually = async () => {
-    if (!targetOrderId) return;
-    setVerifying(true);
-    try {
-      const res = await fetch("/api/delivery/confirm-scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId: targetOrderId,
-          location: "Manual delivery boy confirm"
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        toast.success("Delivery confirmed manually!");
-        setSuccessData(data.order);
-      } else {
-        toast.error(data.error || "Manual confirmation failed.");
-      }
-    } catch (err) {
-      toast.error("Network connection error. Please try again.");
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const handleManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualCode.trim()) return;
-    await verifyQRCode(manualCode);
   };
 
   return (
@@ -180,94 +144,41 @@ export default function QRScanner() {
       {/* Camera Scanning screen */}
       {!verifying && !successData && (
         <div className="space-y-5">
-          {!showManualInput ? (
-            <div className="space-y-4">
-              <div className="relative overflow-hidden rounded-2xl border-2 border-[#00B4D8]/30 shadow-md">
-                
-                {/* Visual Camera scanner overlay */}
-                <div className="absolute inset-0 border-[30px] border-black/45 z-10 pointer-events-none flex items-center justify-center">
-                  <div className="w-48 h-48 border-2 border-[#00B4D8] rounded-xl relative shadow-[0_0_15px_rgba(0,180,216,0.3)] animate-pulse">
-                    <span className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-sky-400 -mt-1.5 -ml-1.5 rounded-tl-sm" />
-                    <span className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-sky-400 -mt-1.5 -mr-1.5 rounded-tr-sm" />
-                    <span className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-sky-400 -mb-1.5 -ml-1.5 rounded-bl-sm" />
-                    <span className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-sky-400 -mb-1.5 -mr-1.5 rounded-br-sm" />
-                  </div>
-                </div>
-
-                <QrReader
-                  delay={300}
-                  onError={handleError}
-                  onScan={handleScan}
-                  facingMode="rear"
-                  constraints={{
-                    video: { facingMode: "environment" }
-                  }}
-                  style={{ width: "100%", height: "260px" }}
-                />
-              </div>
-
-              <div className="flex justify-between items-center gap-3">
-                <p className="text-[11px] text-slate-500 leading-tight flex items-start gap-1">
-                  <Camera size={14} className="text-slate-400 flex-shrink-0" />
-                  <span>Align the customer&apos;s order details QR code inside the target frame.</span>
-                </p>
-                
-                <button
-                  onClick={() => setShowManualInput(true)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-sky-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1 whitespace-nowrap"
-                >
-                  <Keyboard size={13} /> Manual Code
-                </button>
-              </div>
+          <div className="space-y-4">
+            <div className="relative overflow-hidden rounded-2xl border-2 border-[#00B4D8]/30 shadow-md">
               
-              {targetOrderId && (
-                <button
-                  onClick={confirmManually}
-                  className="w-full py-3 border border-dashed border-[#00B4D8] hover:bg-sky-50 dark:hover:bg-slate-800/20 text-[#00B4D8] dark:text-[#00B4D8] rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 mt-2"
-                >
-                  <CheckCircle size={16} /> Problems scanning? Confirm Delivery Manually
-                </button>
-              )}
-            </div>
-          ) : (
-            
-            /* Manual Input form */
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-5 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 dark:border-sky-950 pb-2">
-                <Keyboard size={16} className="text-[#00B4D8]" />
-                Manual Code Entry
-              </h3>
-
-              <form onSubmit={handleManualSubmit} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">QR Code Hash String</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ORDER-id-timestamp-hash"
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800 text-sm focus:border-[#00B4D8] outline-none transition"
-                  />
+              {/* Visual Camera scanner overlay */}
+              <div className="absolute inset-0 border-[30px] border-black/45 z-10 pointer-events-none flex items-center justify-center">
+                <div className="w-48 h-48 border-2 border-[#00B4D8] rounded-xl relative shadow-[0_0_15px_rgba(0,180,216,0.3)] animate-pulse">
+                  <span className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-sky-400 -mt-1.5 -ml-1.5 rounded-tl-sm" />
+                  <span className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-sky-400 -mt-1.5 -mr-1.5 rounded-tr-sm" />
+                  <span className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-sky-400 -mb-1.5 -ml-1.5 rounded-bl-sm" />
+                  <span className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-sky-400 -mb-1.5 -mr-1.5 rounded-br-sm" />
                 </div>
+              </div>
 
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowManualInput(false)}
-                    className="flex-1 py-2 border border-slate-100 dark:border-sky-950 hover:bg-slate-50 rounded-xl text-slate-500 font-bold transition text-xs"
-                  >
-                    Use Camera
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2 bg-[#00B4D8] hover:bg-[#0096C7] text-white rounded-xl font-bold transition text-xs shadow"
-                  >
-                    Confirm Handoff
-                  </button>
-                </div>
-              </form>
+              <QrReader
+                delay={300}
+                onError={handleError}
+                onScan={handleScan}
+                facingMode="rear"
+                constraints={{
+                  video: {
+                    facingMode: "environment",
+                    aspectRatio: { ideal: 1 }
+                  }
+                }}
+                style={{ width: "100%", height: "260px", objectFit: "cover" }}
+              />
             </div>
-          )}
+
+            <div className="flex justify-between items-center gap-3">
+              <p className="text-[11px] text-slate-500 leading-tight flex items-start gap-1">
+                <Camera size={14} className="text-slate-400 flex-shrink-0" />
+                <span>Align the customer&apos;s order details QR code inside the target frame.</span>
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
