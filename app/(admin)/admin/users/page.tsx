@@ -18,7 +18,8 @@ import {
   Search, 
   ShoppingBag,
   QrCode,
-  Printer
+  Printer,
+  Edit
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -49,7 +50,17 @@ const userSchema = zod.object({
   password: zod.string().min(6, "Password must be at least 6 characters"),
 });
 
+const editUserSchema = zod.object({
+  name: zod.string().min(2, "Name must be at least 2 characters"),
+  email: zod.string().email("Please enter a valid email address"),
+  phone: zod.string().min(10, "Phone number must be at least 10 digits"),
+  address: zod.string().min(5, "Address must be complete"),
+  pincode: zod.string().optional().or(zod.literal("")),
+  password: zod.string().optional().or(zod.literal("")),
+});
+
 type UserForm = zod.infer<typeof userSchema>;
+type EditUserForm = zod.infer<typeof editUserSchema>;
 
 // Inline Canvas QR Renderer
 function AdminQRCodeCanvas({ text }: { text: string }) {
@@ -90,6 +101,8 @@ export default function AdminUsers() {
 
   // Form modals state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -103,6 +116,15 @@ export default function AdminUsers() {
     defaultValues: {
       role: "CUSTOMER"
     }
+  });
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleSubmitEdit,
+    reset: resetEdit,
+    formState: { errors: editErrors },
+  } = useForm<EditUserForm>({
+    resolver: zodResolver(editUserSchema),
   });
 
   const fetchUsers = async () => {
@@ -142,6 +164,57 @@ export default function AdminUsers() {
       } else {
         const errData = await res.json();
         toast.error(errData.error || "Failed to create user.");
+      }
+    } catch (err) {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const startEditUser = (user: UserProfile) => {
+    setEditingUser(user);
+    resetEdit({
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      pincode: user.pincode || "",
+      password: "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateUser = async (data: EditUserForm) => {
+    if (!editingUser) return;
+    setSubmitting(true);
+    try {
+      const payload: any = {
+        id: editingUser.id,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        pincode: data.pincode,
+      };
+      if (data.password) {
+        payload.password = data.password;
+      }
+      
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        toast.success(`User details updated successfully!`);
+        setShowEditModal(false);
+        setEditingUser(null);
+        fetchUsers();
+      } else {
+        const errData = await res.json();
+        toast.error(errData.error || "Failed to update user details.");
       }
     } catch (err) {
       toast.error("Network error. Please try again.");
@@ -399,7 +472,7 @@ export default function AdminUsers() {
                     <td className="p-4 font-medium text-slate-600 dark:text-slate-400">
                       {user.totalOrders} deliveries
                     </td>
-                    <td className="p-4 text-right flex items-center justify-end gap-2">
+                    <td className="p-4 text-right flex items-center justify-end gap-1.5">
                       {user.role === "CUSTOMER" && (
                         <button
                           onClick={() => router.push(`/admin/orders?customerId=${user.id}`)}
@@ -415,6 +488,13 @@ export default function AdminUsers() {
                         title="View details & QR"
                       >
                         <Eye size={16} />
+                      </button>
+                      <button
+                        onClick={() => startEditUser(user)}
+                        className="p-1.5 rounded-lg border border-slate-100 dark:border-sky-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 hover:text-sky-600 transition"
+                        title="Edit user profile"
+                      >
+                        <Edit size={16} />
                       </button>
                       <button
                         onClick={() => toggleUserActive(user)}
@@ -469,7 +549,7 @@ export default function AdminUsers() {
                     </span>
                     <button
                       onClick={() => handlePrintQR(selectedUser)}
-                      className="mt-2 px-3.5 py-2 bg-gradient-to-r from-[#0077B6] to-[#00B4D8] hover:opacity-90 text-white text-[11px] font-bold rounded-xl flex items-center gap-1.5 transition shadow"
+                      className="mt-2 px-3.5 py-2 bg-gradient-to-r from-[#0077B6] to-[#00B4D8] hover:opacity-90 text-white text-[11px] font-bold rounded-xl flex items-center gap-1.5 transition shadow animate-pulse"
                     >
                       <Printer size={13} /> Print Customer Card
                     </button>
@@ -529,14 +609,13 @@ export default function AdminUsers() {
                 </button>
               )}
               <button
-                onClick={() => toggleUserActive(selectedUser)}
-                className={`flex-1 py-3 text-xs font-bold rounded-xl transition ${
-                  selectedUser.isActive
-                    ? "bg-red-550/10 hover:bg-red-550/20 text-red-600 dark:text-red-400"
-                    : "bg-green-550/10 hover:bg-green-550/20 text-green-600 dark:text-green-450"
-                }`}
+                onClick={() => {
+                  setSelectedUser(null);
+                  startEditUser(selectedUser);
+                }}
+                className="flex-1 py-3 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-750 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-750 rounded-xl transition flex items-center justify-center gap-1.5"
               >
-                {selectedUser.isActive ? "Deactivate User" : "Activate User"}
+                <Edit size={14} /> Edit Profile
               </button>
             </div>
 
@@ -609,7 +688,7 @@ export default function AdminUsers() {
                     type="email"
                     placeholder="john@email.com"
                     {...register("email")}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/55 text-sm focus:border-[#0077B6] outline-none transition"
                   />
                   {errors.email && (
                     <p className="text-red-500 text-[10px] font-semibold">{errors.email.message}</p>
@@ -622,7 +701,7 @@ export default function AdminUsers() {
                     type="text"
                     placeholder="1234567890"
                     {...register("phone")}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/55 text-sm focus:border-[#0077B6] outline-none transition"
                   />
                   {errors.phone && (
                     <p className="text-red-500 text-[10px] font-semibold">{errors.phone.message}</p>
@@ -637,7 +716,7 @@ export default function AdminUsers() {
                     type="text"
                     placeholder="700091"
                     {...register("pincode")}
-                    className="w-full sm:w-1/2 px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                    className="w-full sm:w-1/2 px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/55 text-sm focus:border-[#0077B6] outline-none transition"
                   />
                   {errors.pincode && (
                     <p className="text-red-500 text-[10px] font-semibold">{errors.pincode.message}</p>
@@ -650,7 +729,7 @@ export default function AdminUsers() {
                     placeholder="Flat, building details..."
                     rows={2}
                     {...register("address")}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/55 text-sm focus:border-[#0077B6] outline-none transition"
                   />
                   {errors.address && (
                     <p className="text-red-500 text-[10px] font-semibold">{errors.address.message}</p>
@@ -675,6 +754,135 @@ export default function AdminUsers() {
                   disabled={submitting}
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Profile"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && editingUser && (
+        <div className="fixed inset-0 bg-slate-950/45 dark:bg-slate-950/65 backdrop-blur-sm z-50 flex items-center justify-center animate-fadeIn p-4">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-6 shadow-2xl flex flex-col gap-5 animate-scaleUp max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between border-b border-slate-150 dark:border-sky-950 pb-3">
+              <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100">
+                Edit {editingUser.role === "CUSTOMER" ? "Customer" : "Delivery Executive"} Account
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingUser(null);
+                }}
+                className="p-1 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-slate-700"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitEdit(handleUpdateUser)} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Full Name</label>
+                <input
+                  type="text"
+                  placeholder="John Doe"
+                  {...registerEdit("name")}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                />
+                {editErrors.name && (
+                  <p className="text-red-500 text-[10px] font-semibold">{editErrors.name.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="john@email.com"
+                    {...registerEdit("email")}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                  />
+                  {editErrors.email && (
+                    <p className="text-red-500 text-[10px] font-semibold">{editErrors.email.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Phone Number</label>
+                  <input
+                    type="text"
+                    placeholder="1234567890"
+                    {...registerEdit("phone")}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                  />
+                  {editErrors.phone && (
+                    <p className="text-red-500 text-[10px] font-semibold">{editErrors.phone.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Area Pincode</label>
+                  <input
+                    type="text"
+                    placeholder="700091"
+                    {...registerEdit("pincode")}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                  />
+                  {editErrors.pincode && (
+                    <p className="text-red-500 text-[10px] font-semibold">{editErrors.pincode.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">
+                    Change Password <span className="text-[10px] text-slate-400 font-normal">(Leave blank to keep current)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="New password (optional)"
+                    {...registerEdit("password")}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                  />
+                  {editErrors.password && (
+                    <p className="text-red-500 text-[10px] font-semibold">{editErrors.password.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Physical Delivery Address</label>
+                <textarea
+                  placeholder="Flat, building details..."
+                  rows={2}
+                  {...registerEdit("address")}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                />
+                {editErrors.address && (
+                  <p className="text-red-500 text-[10px] font-semibold">{editErrors.address.message}</p>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-slate-150 dark:border-sky-950">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingUser(null);
+                  }}
+                  className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-50 border border-slate-200 dark:border-sky-950 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 text-xs font-bold bg-gradient-to-r from-[#0077B6] to-[#00B4D8] text-white rounded-xl shadow transition flex items-center justify-center gap-1.5"
+                  disabled={submitting}
+                >
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
                 </button>
               </div>
             </form>

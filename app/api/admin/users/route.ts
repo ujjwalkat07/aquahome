@@ -23,11 +23,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Admin not found" }, { status: 404 });
     }
 
-    let whereClause: any = {};
+    let whereClause: any = {
+      role: { in: ["CUSTOMER", "DELIVERY", "ADMIN"] }
+    };
+
     if (adminUser.pincode) {
       whereClause.pincode = adminUser.pincode;
     }
-    if (role) {
+
+    if (role && (role === "CUSTOMER" || role === "DELIVERY" || role === "ADMIN" || role === "SUPER_ADMIN")) {
       whereClause.role = role;
     }
 
@@ -117,28 +121,32 @@ export async function POST(req: Request) {
 
     // Check if updating
     if (id) {
-      // Find the user first to make sure they are in the admin's pincode
       const targetUser = await prisma.user.findUnique({
         where: { id }
       });
       if (!targetUser) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
+
+      // Enforce data separation
       if (adminPincode && targetUser.pincode && targetUser.pincode !== adminPincode) {
         return NextResponse.json({ error: "Access denied: User is in a different pincode region." }, { status: 403 });
       }
 
-      const userPincode = pincode !== undefined ? (pincode || null) : targetUser.pincode;
-      if (adminPincode && userPincode && userPincode !== adminPincode) {
-        return NextResponse.json({ error: "Access denied: Cannot assign a different pincode region." }, { status: 403 });
+      let finalPincode = pincode;
+      if (adminPincode) {
+        if (pincode && pincode !== adminPincode) {
+          return NextResponse.json({ error: "Access denied: Cannot assign a different pincode region." }, { status: 403 });
+        }
+        finalPincode = adminPincode;
       }
-      
+
       let updateData: any = {
         name,
         email,
         phone,
         address,
-        pincode: userPincode,
+        pincode: finalPincode !== undefined ? (finalPincode || null) : undefined,
         isActive: isActive !== undefined ? !!isActive : undefined
       };
 
@@ -167,9 +175,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Missing required registration details" }, { status: 400 });
       }
 
-      const userPincode = pincode || null;
-      if (adminPincode && userPincode && userPincode !== adminPincode) {
-        return NextResponse.json({ error: "Access denied: Cannot register users in a different pincode region." }, { status: 403 });
+      let finalPincode = pincode;
+      if (adminPincode) {
+        if (pincode && pincode !== adminPincode) {
+          return NextResponse.json({ error: "Access denied: Cannot register users in a different pincode region." }, { status: 403 });
+        }
+        finalPincode = adminPincode;
       }
 
       // Check existing email
@@ -187,11 +198,11 @@ export async function POST(req: Request) {
           email,
           phone,
           address,
-          pincode: userPincode,
+          pincode: finalPincode || null,
           role,
           passwordHash,
           isActive: true,
-          firstLogin: role === "CUSTOMER", // Customers require password reset on first login
+          firstLogin: role === "CUSTOMER",
         },
         select: {
           id: true,

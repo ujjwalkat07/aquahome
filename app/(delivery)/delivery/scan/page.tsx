@@ -322,7 +322,9 @@ export default function QRScanner() {
           payment: data.payment,
           items: getSelectedItems(),
           customerName: billingCustomer.name,
-          accountNumber: `AQ-2026-${billingCustomer.id.slice(0, 6).toUpperCase()}`
+          accountNumber: `AQ-2026-${billingCustomer.id.slice(0, 6).toUpperCase()}`,
+          customerPhone: data.customerPhone,
+          whatsappText: data.whatsappMessage
         });
         toast.success("Bill generated & notifications sent!");
         setBillingCustomer(null);
@@ -698,6 +700,17 @@ export default function QRScanner() {
               </span>
             </div>
           </div>
+
+          {billingSuccessData.customerPhone && billingSuccessData.whatsappText && (
+            <a
+              href={`https://api.whatsapp.com/send?phone=${billingSuccessData.customerPhone.replace(/[^0-9]/g, "")}&text=${encodeURIComponent(billingSuccessData.whatsappText)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 bg-[#25D366] hover:bg-[#20BA56] text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center gap-2"
+            >
+              <MessageSquare size={16} fill="white" /> Open WhatsApp to Send Receipt
+            </a>
+          )}
 
           <button
             onClick={handleRetry}

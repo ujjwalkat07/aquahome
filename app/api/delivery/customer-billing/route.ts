@@ -323,7 +323,9 @@ For support, contact us at info@aquahome.com`;
       success: true,
       message: "Order billing completed and notifications dispatched.",
       order: result.order,
-      payment: result.payment
+      payment: result.payment,
+      whatsappMessage: whatsappMsg,
+      customerPhone: customer.phone
     }, { status: 201 });
 
   } catch (error: any) {
