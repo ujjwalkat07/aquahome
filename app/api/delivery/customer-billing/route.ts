@@ -295,7 +295,8 @@ For support, contact us at info@aquahome.com`;
       message: `Your water delivery has been completed. Invoice #INV-${invoiceNum} of ₹${totalAmount.toFixed(2)} generated. Payment Status: ${paymentStatus}.`,
       email: customer.email,
       phone: customer.phone,
-      whatsAppMessage: whatsappMsg
+      whatsAppMessage: whatsappMsg,
+      emailHtml: emailHtmlBody
     });
 
     // Alert Admins of low stock products

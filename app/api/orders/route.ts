@@ -29,18 +29,15 @@ export async function GET(req: Request) {
     } else if (userRole === "ADMIN") {
       const adminUser = await prisma.user.findUnique({
         where: { id: currentUserId },
-        select: { pincode: true }
+        select: { id: true }
       });
       if (!adminUser) {
         return NextResponse.json({ error: "Admin not found" }, { status: 404 });
       }
 
-      if (adminUser.pincode) {
-        whereClause.OR = [
-          { deliveryPincode: adminUser.pincode },
-          { user: { pincode: adminUser.pincode } }
-        ];
-      }
+      whereClause.user = {
+        vendorId: adminUser.id
+      };
 
       if (userIdParam) {
         whereClause.userId = userIdParam;
@@ -106,34 +103,30 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Access denied. Only admins can place orders on behalf of other users." }, { status: 403 });
       }
 
-      // Fetch admin's details to verify pincode region
+      // Fetch admin's details
       const adminUser = await prisma.user.findUnique({
         where: { id: currentUserId },
-        select: { pincode: true }
+        select: { id: true }
       });
       if (!adminUser) {
         return NextResponse.json({ error: "Admin profile not found." }, { status: 404 });
       }
 
-      if (!finalDeliveryPincode) {
-        finalDeliveryPincode = adminUser.pincode;
-      }
-
       // Fetch target customer details
       const targetCustomer = await prisma.user.findUnique({
         where: { id: customerId },
-        select: { id: true, pincode: true }
+        select: { id: true, pincode: true, vendorId: true }
       });
       if (!targetCustomer) {
         return NextResponse.json({ error: "Target customer not found." }, { status: 404 });
       }
 
-      if (targetCustomer.pincode && targetCustomer.pincode !== adminUser.pincode) {
-        return NextResponse.json({ error: "Access denied: Customer belongs to a different pincode region." }, { status: 403 });
+      if (targetCustomer.vendorId && targetCustomer.vendorId !== adminUser.id) {
+        return NextResponse.json({ error: "Access denied: Customer belongs to a different vendor." }, { status: 403 });
       }
 
-      if (finalDeliveryPincode && finalDeliveryPincode !== adminUser.pincode) {
-        return NextResponse.json({ error: "Delivery pincode must match customer's regional pincode." }, { status: 400 });
+      if (!finalDeliveryPincode) {
+        finalDeliveryPincode = targetCustomer.pincode;
       }
 
       targetUserId = customerId;

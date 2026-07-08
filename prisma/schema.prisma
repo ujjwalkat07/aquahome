@@ -37,6 +37,8 @@ model User {
   passwordHash String
   isActive     Boolean   @default(true)
   firstLogin   Boolean   @default(true)
+  vendorId     String?
+  vendorName   String?
   createdAt    DateTime  @default(now())
 
   // Relations

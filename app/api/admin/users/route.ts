@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
     const adminUser = await prisma.user.findUnique({
       where: { id: (session.user as any).id },
-      select: { pincode: true }
+      select: { id: true, name: true }
     });
 
     if (!adminUser) {
@@ -24,12 +24,12 @@ export async function GET(req: Request) {
     }
 
     let whereClause: any = {
-      role: { in: ["CUSTOMER", "DELIVERY", "ADMIN"] }
+      role: { in: ["CUSTOMER", "DELIVERY", "ADMIN"] },
+      OR: [
+        { vendorId: adminUser.id },
+        { id: adminUser.id }
+      ]
     };
-
-    if (adminUser.pincode) {
-      whereClause.pincode = adminUser.pincode;
-    }
 
     if (role && (role === "CUSTOMER" || role === "DELIVERY" || role === "ADMIN" || role === "SUPER_ADMIN")) {
       whereClause.role = role;
@@ -48,6 +48,8 @@ export async function GET(req: Request) {
         isActive: true,
         firstLogin: true,
         createdAt: true,
+        vendorId: true,
+        vendorName: true,
         orders: {
           select: {
             id: true,
@@ -89,7 +91,9 @@ export async function GET(req: Request) {
         firstLogin: user.firstLogin,
         createdAt: user.createdAt,
         totalOrders: user.orders.length,
-        unpaidBalance
+        unpaidBalance,
+        vendorId: user.vendorId,
+        vendorName: user.vendorName
       };
     });
 
@@ -109,12 +113,11 @@ export async function POST(req: Request) {
     const currentUserId = (session.user as any).id;
     const adminUser = await prisma.user.findUnique({
       where: { id: currentUserId },
-      select: { pincode: true }
+      select: { id: true, name: true }
     });
     if (!adminUser) {
       return NextResponse.json({ error: "Admin not found" }, { status: 404 });
     }
-    const adminPincode = adminUser.pincode;
 
     const body = await req.json();
     const { id, name, email, phone, address, pincode, role, password, isActive } = body;
@@ -128,17 +131,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
 
-      // Enforce data separation
-      if (adminPincode && targetUser.pincode && targetUser.pincode !== adminPincode) {
-        return NextResponse.json({ error: "Access denied: User is in a different pincode region." }, { status: 403 });
-      }
-
-      let finalPincode = pincode;
-      if (adminPincode) {
-        if (pincode && pincode !== adminPincode) {
-          return NextResponse.json({ error: "Access denied: Cannot assign a different pincode region." }, { status: 403 });
-        }
-        finalPincode = adminPincode;
+      // Enforce vendor separation on update
+      if (targetUser.vendorId && targetUser.vendorId !== adminUser.id) {
+        return NextResponse.json({ error: "Access denied: This account belongs to another vendor." }, { status: 403 });
       }
 
       let updateData: any = {
@@ -146,7 +141,7 @@ export async function POST(req: Request) {
         email,
         phone,
         address,
-        pincode: finalPincode !== undefined ? (finalPincode || null) : undefined,
+        pincode: pincode !== undefined ? (pincode || null) : undefined,
         isActive: isActive !== undefined ? !!isActive : undefined
       };
 
@@ -165,7 +160,9 @@ export async function POST(req: Request) {
           address: true,
           pincode: true,
           role: true,
-          isActive: true
+          isActive: true,
+          vendorId: true,
+          vendorName: true
         }
       });
       return NextResponse.json(updatedUser);
@@ -173,14 +170,6 @@ export async function POST(req: Request) {
       // Create user
       if (!name || !email || !phone || !address || !role) {
         return NextResponse.json({ error: "Missing required registration details" }, { status: 400 });
-      }
-
-      let finalPincode = pincode;
-      if (adminPincode) {
-        if (pincode && pincode !== adminPincode) {
-          return NextResponse.json({ error: "Access denied: Cannot register users in a different pincode region." }, { status: 403 });
-        }
-        finalPincode = adminPincode;
       }
 
       // Check existing email
@@ -199,11 +188,13 @@ export async function POST(req: Request) {
           email,
           phone,
           address,
-          pincode: finalPincode || null,
+          pincode: pincode || null,
           role,
           passwordHash,
           isActive: true,
           firstLogin: role === "CUSTOMER",
+          vendorId: adminUser.id,
+          vendorName: adminUser.name
         },
         select: {
           id: true,
@@ -213,7 +204,9 @@ export async function POST(req: Request) {
           address: true,
           pincode: true,
           role: true,
-          isActive: true
+          isActive: true,
+          vendorId: true,
+          vendorName: true
         }
       });
 

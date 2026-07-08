@@ -165,7 +165,8 @@ export async function notifyUser({
   message,
   email,
   phone,
-  whatsAppMessage
+  whatsAppMessage,
+  emailHtml
 }: {
   userId: string;
   title: string;
@@ -173,6 +174,7 @@ export async function notifyUser({
   email?: string;
   phone?: string;
   whatsAppMessage?: string;
+  emailHtml?: string;
 }) {
   try {
     // 1. In-app notification
@@ -190,7 +192,7 @@ export async function notifyUser({
         to: email,
         subject: title,
         text: message,
-        html: getHtmlTemplate(title, message)
+        html: emailHtml || getHtmlTemplate(title, message)
       });
     }
 

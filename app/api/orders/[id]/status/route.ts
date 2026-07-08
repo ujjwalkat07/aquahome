@@ -48,7 +48,7 @@ export async function PATCH(
       }
     }
 
-    // Admins and Delivery Partners can update. Delivery partners can only transition to DELIVERED via QR code usually, but let's check
+    // Admins and Delivery Partners can update.
     if (userRole === "DELIVERY" && order.deliveryPartnerId !== currentUserId) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -56,18 +56,19 @@ export async function PATCH(
     if (userRole === "ADMIN") {
       const adminUser = await prisma.user.findUnique({
         where: { id: currentUserId },
-        select: { pincode: true }
+        select: { id: true }
       });
       if (!adminUser) {
         return NextResponse.json({ error: "Admin not found" }, { status: 404 });
       }
 
-      if (adminUser.pincode) {
-        const matchesOrderPincode = order.deliveryPincode === adminUser.pincode;
-        const matchesUserPincode = order.user?.pincode === adminUser.pincode;
-        if (!matchesOrderPincode && !matchesUserPincode) {
-          return NextResponse.json({ error: "Access denied: Order belongs to a different pincode region" }, { status: 403 });
-        }
+      const orderUser = await prisma.user.findUnique({
+        where: { id: order.userId },
+        select: { vendorId: true }
+      });
+
+      if (orderUser && orderUser.vendorId && orderUser.vendorId !== adminUser.id) {
+        return NextResponse.json({ error: "Access denied: Order belongs to a different vendor's customer." }, { status: 403 });
       }
     }
 

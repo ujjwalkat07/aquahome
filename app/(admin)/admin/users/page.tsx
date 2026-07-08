@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,6 +38,8 @@ interface UserProfile {
   createdAt: string;
   totalOrders: number;
   unpaidBalance: number;
+  vendorId?: string | null;
+  vendorName?: string | null;
 }
 
 const userSchema = zod.object({
@@ -98,6 +100,19 @@ export default function AdminUsers() {
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
+  const [vendorFilter, setVendorFilter] = useState("ALL");
+
+  const vendorsList = useMemo(() => {
+    const list: { id: string; name: string }[] = [];
+    users.forEach(u => {
+      if (u.vendorId && u.vendorName) {
+        if (!list.some(v => v.id === u.vendorId)) {
+          list.push({ id: u.vendorId, name: u.vendorName });
+        }
+      }
+    });
+    return list;
+  }, [users]);
 
   // Form modals state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -372,7 +387,12 @@ export default function AdminUsers() {
 
     const matchesRole = roleFilter === "ALL" || u.role === roleFilter;
 
-    return matchesSearch && matchesRole;
+    const matchesVendor =
+      vendorFilter === "ALL" ||
+      (vendorFilter === "SYSTEM" && !u.vendorId) ||
+      u.vendorId === vendorFilter;
+
+    return matchesSearch && matchesRole && matchesVendor;
   });
 
   if (loading) {
@@ -427,6 +447,17 @@ export default function AdminUsers() {
           <option value="CUSTOMER">Customers</option>
           <option value="DELIVERY">Delivery Partners</option>
         </select>
+        <select
+          value={vendorFilter}
+          onChange={(e) => setVendorFilter(e.target.value)}
+          className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-sky-950 bg-white dark:bg-slate-900 text-sm focus:border-[#0077B6] outline-none transition dark:text-slate-200"
+        >
+          <option value="ALL">All Vendors</option>
+          <option value="SYSTEM">System / Default</option>
+          {vendorsList.map(v => (
+            <option key={v.id} value={v.id}>{v.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* User listing table */}
@@ -437,6 +468,7 @@ export default function AdminUsers() {
               <tr className="bg-slate-50 dark:bg-slate-800/40 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-sky-950">
                 <th className="p-4">Name / Contact</th>
                 <th className="p-4">Role</th>
+                <th className="p-4">Vendor</th>
                 <th className="p-4">Status</th>
                 <th className="p-4">Unpaid Balance</th>
                 <th className="p-4">Orders Count</th>
@@ -446,7 +478,7 @@ export default function AdminUsers() {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-950 text-xs">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400 italic">No users found matching filters.</td>
+                  <td colSpan={7} className="p-8 text-center text-slate-400 italic">No users found matching filters.</td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
@@ -463,6 +495,12 @@ export default function AdminUsers() {
                       }`}>
                         {user.role}
                       </span>
+                    </td>
+                    <td className="p-4">
+                      <p className="font-semibold text-slate-700 dark:text-slate-350">{user.vendorName || "System / Default"}</p>
+                      {user.vendorId && (
+                        <p className="text-[9px] text-slate-400 font-mono">ID: {user.vendorId.slice(0, 8)}</p>
+                      )}
                     </td>
                     <td className="p-4">
                       <span className={`inline-flex items-center gap-1 font-bold ${user.isActive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>

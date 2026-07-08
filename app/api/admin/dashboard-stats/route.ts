@@ -12,25 +12,14 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch the admin's details (specifically pincode) to scope stats
     const adminUser = await prisma.user.findUnique({
       where: { id: (session.user as any).id },
-      select: { pincode: true }
+      select: { id: true }
     });
 
     if (!adminUser) {
       return NextResponse.json({ error: "Admin not found" }, { status: 404 });
     }
-
-    const pincode = adminUser.pincode;
-    const pincodeFilter = pincode
-      ? {
-          OR: [
-            { deliveryPincode: pincode },
-            { user: { pincode: pincode } }
-          ]
-        }
-      : {};
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -43,7 +32,7 @@ export async function GET() {
       where: {
         createdAt: { gte: startOfToday },
         status: { in: ["PENDING", "IN_PROGRESS", "DELIVERED"] },
-        ...pincodeFilter
+        user: { vendorId: adminUser.id }
       }
     });
 
@@ -51,7 +40,7 @@ export async function GET() {
     const pendingDeliveriesCount = await prisma.order.count({
       where: {
         status: { in: ["PENDING", "IN_PROGRESS"] },
-        ...pincodeFilter
+        user: { vendorId: adminUser.id }
       }
     });
 
@@ -59,9 +48,9 @@ export async function GET() {
     const unpaidPayments = await prisma.payment.findMany({
       where: {
         status: "UNPAID",
+        user: { vendorId: adminUser.id },
         order: {
-          status: { not: "CANCELLED" },
-          ...pincodeFilter
+          status: { not: "CANCELLED" }
         }
       },
       select: { amount: true }
@@ -73,9 +62,7 @@ export async function GET() {
       where: {
         status: "PAID",
         paidAt: { gte: startOfThisMonth, lt: startOfNextMonth },
-        order: {
-          ...pincodeFilter
-        }
+        user: { vendorId: adminUser.id }
       },
       select: { amount: true }
     });
@@ -85,9 +72,7 @@ export async function GET() {
       where: {
         status: "PAID",
         paidAt: { gte: startOfLastMonth, lt: startOfThisMonth },
-        order: {
-          ...pincodeFilter
-        }
+        user: { vendorId: adminUser.id }
       },
       select: { amount: true }
     });

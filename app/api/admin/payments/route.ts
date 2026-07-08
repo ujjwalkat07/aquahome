@@ -25,20 +25,15 @@ export async function GET(req: Request) {
     } else if (role === "ADMIN") {
       const adminUser = await prisma.user.findUnique({
         where: { id: currentUserId },
-        select: { pincode: true }
+        select: { id: true }
       });
       if (!adminUser) {
         return NextResponse.json({ error: "Admin not found" }, { status: 404 });
       }
 
-      if (adminUser.pincode) {
-        whereClause.order = {
-          OR: [
-            { deliveryPincode: adminUser.pincode },
-            { user: { pincode: adminUser.pincode } }
-          ]
-        };
-      }
+      whereClause.user = {
+        vendorId: adminUser.id
+      };
 
       if (userId) {
         whereClause.userId = userId;
@@ -83,7 +78,7 @@ export async function POST(req: Request) {
     const currentUserId = (session.user as any).id;
     const adminUser = await prisma.user.findUnique({
       where: { id: currentUserId },
-      select: { pincode: true }
+      select: { id: true }
     });
     if (!adminUser) {
       return NextResponse.json({ error: "Admin not found" }, { status: 404 });
@@ -93,29 +88,24 @@ export async function POST(req: Request) {
       // Process collection of all unpaid payments for a customer
       const customer = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, name: true, email: true, phone: true, pincode: true }
+        select: { id: true, name: true, email: true, phone: true, vendorId: true }
       });
       if (!customer) {
         return NextResponse.json({ error: "Customer not found." }, { status: 404 });
       }
 
-      // Allow admin if admin pincode matches customer pincode
-      if (adminUser.pincode && customer.pincode && customer.pincode !== adminUser.pincode) {
-        return NextResponse.json({ error: "Access denied: Customer belongs to a different pincode region." }, { status: 403 });
+      // Allow admin if customer belongs to this vendor
+      if (customer.vendorId && customer.vendorId !== adminUser.id) {
+        return NextResponse.json({ error: "Access denied: Customer belongs to a different vendor." }, { status: 403 });
       }
 
       const unpaidPayments = await prisma.payment.findMany({
         where: {
           userId: userId,
           status: "UNPAID",
-          order: adminUser.pincode
-            ? {
-                OR: [
-                  { deliveryPincode: adminUser.pincode },
-                  { user: { pincode: adminUser.pincode } }
-                ]
-              }
-            : {}
+          user: {
+            vendorId: adminUser.id
+          }
         }
       });
 
@@ -152,7 +142,7 @@ export async function POST(req: Request) {
       const payment = await prisma.payment.findUnique({
         where: { id: paymentId },
         include: {
-          user: { select: { id: true, name: true, email: true, phone: true, pincode: true } },
+          user: { select: { id: true, name: true, email: true, phone: true, vendorId: true } },
           order: { select: { deliveryPincode: true } }
         }
       });
@@ -161,13 +151,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Payment record not found." }, { status: 404 });
       }
 
-      // Check if admin is allowed to collect this payment (if order pincode or customer pincode matches)
-      if (adminUser.pincode) {
-        const matchesOrderPincode = payment.order.deliveryPincode === adminUser.pincode;
-        const matchesUserPincode = payment.user.pincode === adminUser.pincode;
-        if (!matchesOrderPincode && !matchesUserPincode) {
-          return NextResponse.json({ error: "Access denied: Payment belongs to a different pincode region." }, { status: 403 });
-        }
+      // Check if admin is allowed to collect this payment
+      if (payment.user.vendorId && payment.user.vendorId !== adminUser.id) {
+        return NextResponse.json({ error: "Access denied: Payment belongs to a different vendor's customer." }, { status: 403 });
       }
 
       if (payment.status === "PAID") {
