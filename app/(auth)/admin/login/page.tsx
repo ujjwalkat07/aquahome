@@ -142,8 +142,8 @@ export default function AdminLogin() {
           <div className="flex justify-center gap-4 text-xs font-bold text-[#0077B6] dark:text-[#00B4D8]">
             <Link href="/" className="hover:underline">Home Portal</Link>
             <span className="text-slate-300 dark:text-sky-900">•</span>
-            <Link href="/login" className="hover:underline">Customer Portal</Link>
-            <span className="text-slate-300 dark:text-sky-900">•</span>
+            {/* <Link href="/login" className="hover:underline">Customer Portal</Link>
+            <span className="text-slate-300 dark:text-sky-900">•</span> */}
             <Link href="/delivery/login" className="hover:underline">Delivery Portal</Link>
           </div>
         </div>

@@ -26,7 +26,7 @@ export default function Home() {
         {/* Portals Select Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mt-8">
           {/* Customer portal */}
-          <Link
+          {/* <Link
             href="/login"
             className="group relative flex flex-col items-center p-6 bg-white dark:bg-slate-900/80 dark:hover:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl shadow-md hover:shadow-xl dark:shadow-slate-950/20 transition-all duration-300 transform hover:-translate-y-1 hover:border-[#00B4D8]/30"
           >
@@ -39,7 +39,7 @@ export default function Home() {
             <p className="text-xs text-slate-400 dark:text-slate-500 text-center mt-2 leading-relaxed">
               Order mineral water bottles, track status, and view invoices.
             </p>
-          </Link>
+          </Link> */}
 
           {/* Delivery Portal */}
           <Link
