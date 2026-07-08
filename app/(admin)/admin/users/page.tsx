@@ -47,7 +47,7 @@ const userSchema = zod.object({
   address: zod.string().min(5, "Address must be complete"),
   pincode: zod.string().optional().or(zod.literal("")),
   role: zod.enum(["CUSTOMER", "DELIVERY"]),
-  password: zod.string().min(6, "Password must be at least 6 characters"),
+  password: zod.string().optional().or(zod.literal("")),
 });
 
 const editUserSchema = zod.object({
@@ -110,6 +110,7 @@ export default function AdminUsers() {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<UserForm>({
     resolver: zodResolver(userSchema),
@@ -117,6 +118,8 @@ export default function AdminUsers() {
       role: "CUSTOMER"
     }
   });
+
+  const selectedRole = watch("role");
 
   const {
     register: registerEdit,
@@ -642,7 +645,7 @@ export default function AdminUsers() {
             </div>
 
             <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Role Assignment</label>
                   <select
@@ -654,18 +657,20 @@ export default function AdminUsers() {
                   </select>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Temp Password</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. temp123"
-                    {...register("password")}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
-                  />
-                  {errors.password && (
-                    <p className="text-red-500 text-[10px] font-semibold">{errors.password.message}</p>
-                  )}
-                </div>
+                {selectedRole === "DELIVERY" && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Temp Password</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. temp123"
+                      {...register("password")}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
+                    />
+                    {errors.password && (
+                      <p className="text-red-500 text-[10px] font-semibold">{errors.password.message}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">

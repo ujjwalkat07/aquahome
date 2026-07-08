@@ -171,7 +171,7 @@ export async function POST(req: Request) {
       return NextResponse.json(updatedUser);
     } else {
       // Create user
-      if (!name || !email || !phone || !address || !role || !password) {
+      if (!name || !email || !phone || !address || !role) {
         return NextResponse.json({ error: "Missing required registration details" }, { status: 400 });
       }
 
@@ -191,7 +191,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Email already exists" }, { status: 400 });
       }
 
-      const passwordHash = await bcrypt.hash(password, 10);
+      const activePassword = password || (Math.random().toString(36).slice(-12) + "AqHome#2026");
+      const passwordHash = await bcrypt.hash(activePassword, 10);
       const newUser = await prisma.user.create({
         data: {
           name,
