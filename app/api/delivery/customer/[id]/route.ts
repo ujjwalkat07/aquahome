@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const customerId = params.id;
+    const { id: customerId } = await params;
     if (!customerId) {
       return NextResponse.json({ error: "Customer ID is required" }, { status: 400 });
     }
