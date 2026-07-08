@@ -14,8 +14,8 @@ export default function BottomNavbar() {
   const role = (session.user as any)?.role;
 
   const customerTabs = [
-    { name: "New Order", href: "/user/order/new", icon: PlusCircle },
-    { name: "My Orders", href: "/user/orders", icon: ShoppingBag },
+    { name: "Dashboard", href: "/user", icon: QrCode },
+    { name: "My Bills", href: "/user/orders", icon: ShoppingBag },
     { name: "Payments", href: "/user/payments", icon: CreditCard },
     { name: "Profile", href: "/user/profile", icon: User },
   ];

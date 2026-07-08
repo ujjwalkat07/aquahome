@@ -1,13 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as zod from "zod";
-import { Loader2, Users, Plus, ShieldCheck, ShieldAlert, X, Eye, Phone, MapPin, Search, ShoppingBag } from "lucide-react";
+import { 
+  Loader2, 
+  Users, 
+  Plus, 
+  ShieldCheck, 
+  ShieldAlert, 
+  X, 
+  Eye, 
+  Phone, 
+  MapPin, 
+  Search, 
+  ShoppingBag,
+  QrCode,
+  Printer
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import QRCode from "qrcode";
 
 interface UserProfile {
   id: string;
@@ -35,6 +50,33 @@ const userSchema = zod.object({
 });
 
 type UserForm = zod.infer<typeof userSchema>;
+
+// Inline Canvas QR Renderer
+function AdminQRCodeCanvas({ text }: { text: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (canvasRef.current && text) {
+      QRCode.toCanvas(
+        canvasRef.current,
+        text,
+        {
+          width: 140,
+          margin: 1,
+          color: {
+            dark: "#0f172a",
+            light: "#ffffff",
+          },
+        },
+        (error) => {
+          if (error) console.error("QR Code Generation Error:", error);
+        }
+      );
+    }
+  }, [text]);
+
+  return <canvas ref={canvasRef} className="rounded-lg shadow-sm border border-slate-100 dark:border-sky-950/20" />;
+}
 
 export default function AdminUsers() {
   const { data: session } = useSession();
@@ -136,6 +178,114 @@ export default function AdminUsers() {
     } catch (err) {
       toast.error("Network error.");
     }
+  };
+
+  const handlePrintQR = (user: UserProfile) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Popup blocked! Please allow popups to print QR Code.");
+      return;
+    }
+
+    const qrValue = `AQUAHOME-CUSTOMER:${user.id}`;
+    const accountNum = `AQ-2026-${user.id.slice(0, 6).toUpperCase()}`;
+
+    // Get QR image source from a temporary canvas
+    const tempCanvas = document.createElement("canvas");
+    QRCode.toCanvas(tempCanvas, qrValue, { width: 300, margin: 1 }, (err) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      const dataUrl = tempCanvas.toDataURL("image/png");
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print Customer Card - ${user.name}</title>
+            <style>
+              body {
+                font-family: system-ui, -apple-system, sans-serif;
+                text-align: center;
+                margin: 0;
+                padding: 40px;
+                background-color: white;
+                color: black;
+              }
+              .card {
+                border: 2px dashed #0077b6;
+                border-radius: 20px;
+                padding: 30px;
+                display: inline-block;
+                max-width: 320px;
+                margin: 0 auto;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+              }
+              .logo {
+                font-weight: 800;
+                font-size: 22px;
+                color: #0077b6;
+                margin: 0 0 12px 0;
+              }
+              .qr-img {
+                width: 210px;
+                height: 210px;
+                margin: 15px auto;
+                display: block;
+              }
+              .acc-num {
+                font-family: monospace;
+                font-size: 16px;
+                font-weight: bold;
+                margin: 5px 0;
+                background: #f1f5f9;
+                padding: 6px 12px;
+                border-radius: 8px;
+                display: inline-block;
+                color: #334155;
+              }
+              .name {
+                font-size: 16px;
+                font-weight: bold;
+                margin: 12px 0 6px 0;
+                color: #1e293b;
+              }
+              .details {
+                font-size: 11px;
+                color: #475569;
+                margin: 4px 0;
+              }
+              .footer-text {
+                font-size: 9px;
+                color: #94a3b8;
+                margin-top: 18px;
+                letter-spacing: 0.5px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="logo">💧 AquaHome</div>
+              <div class="acc-num">${accountNum}</div>
+              <div>
+                <img class="qr-img" src="${dataUrl}" alt="QR Code" />
+              </div>
+              <div class="name">${user.name}</div>
+              <div class="details"><strong>Phone:</strong> ${user.phone}</div>
+              <div class="details" style="max-width: 260px; margin: 4px auto; word-wrap: break-word;"><strong>Address:</strong> ${user.address}</div>
+              <div class="footer-text">Scan Customer QR to record deliveries</div>
+            </div>
+            <script>
+              window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    });
   };
 
   const filteredUsers = users.filter((u) => {
@@ -262,7 +412,7 @@ export default function AdminUsers() {
                       <button
                         onClick={() => setSelectedUser(user)}
                         className="p-1.5 rounded-lg border border-slate-100 dark:border-sky-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 transition"
-                        title="View details"
+                        title="View details & QR"
                       >
                         <Eye size={16} />
                       </button>
@@ -289,11 +439,11 @@ export default function AdminUsers() {
       {/* User Details Modal (Drawer) */}
       {selectedUser && (
         <div className="fixed inset-0 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-end animate-fadeIn">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-sky-950 h-full p-6 shadow-2xl flex flex-col justify-between animate-slideIn">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-sky-950 h-full p-6 shadow-2xl flex flex-col justify-between overflow-y-auto animate-slideIn">
             
             {/* Header info */}
             <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-sky-950 pb-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-sky-950 pb-4">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedUser.role} Account</span>
                   <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">{selectedUser.name}</h3>
@@ -307,7 +457,24 @@ export default function AdminUsers() {
               </div>
 
               {/* Data body */}
-              <div className="space-y-4 text-xs">
+              <div className="space-y-5 text-xs">
+                
+                {/* QR Code Section for Customer */}
+                {selectedUser.role === "CUSTOMER" && (
+                  <div className="border border-slate-200 dark:border-sky-950 p-4 rounded-2xl flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-950/20 text-center gap-2">
+                    <span className="text-[10px] font-bold text-[#0077B6] uppercase tracking-wider block">Customer Scannable Code</span>
+                    <AdminQRCodeCanvas text={`AQUAHOME-CUSTOMER:${selectedUser.id}`} />
+                    <span className="text-[11px] font-mono text-slate-700 dark:text-slate-350 font-bold mt-1">
+                      AQ-2026-{selectedUser.id.slice(0, 6).toUpperCase()}
+                    </span>
+                    <button
+                      onClick={() => handlePrintQR(selectedUser)}
+                      className="mt-2 px-3.5 py-2 bg-gradient-to-r from-[#0077B6] to-[#00B4D8] hover:opacity-90 text-white text-[11px] font-bold rounded-xl flex items-center gap-1.5 transition shadow"
+                    >
+                      <Printer size={13} /> Print Customer Card
+                    </button>
+                  </div>
+                )}
                 
                 <div className="p-3 bg-slate-50/50 dark:bg-slate-800/20 rounded-xl space-y-2.5">
                   <div className="flex items-start gap-2 text-slate-600 dark:text-slate-400">
@@ -328,7 +495,7 @@ export default function AdminUsers() {
                     </span>
                   </div>
                   <div className="p-3.5 bg-red-50/10 border border-red-100/10 rounded-xl dark:border-red-950">
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Unpaid Invoice Ledger</span>
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Unpaid Balance</span>
                     <span className="text-base font-extrabold text-red-500 mt-1 block">
                       ₹{selectedUser.unpaidBalance.toFixed(2)}
                     </span>
@@ -337,13 +504,7 @@ export default function AdminUsers() {
 
                 <div className="space-y-2">
                   <span className="font-bold text-slate-700 dark:text-slate-300 block uppercase tracking-wider text-[10px]">Administrative Details</span>
-                  <div className="flex justify-between p-2.5 border border-slate-100 dark:border-sky-950 rounded-xl">
-                    <span className="text-slate-500">Login Password Change Required:</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      {selectedUser.firstLogin ? "Yes (Pending)" : "No (Completed)"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between p-2.5 border border-slate-100 dark:border-sky-950 rounded-xl">
+                  <div className="flex justify-between p-2.5 border border-slate-150 dark:border-sky-950 rounded-xl">
                     <span className="text-slate-500">Registered On:</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                       {new Date(selectedUser.createdAt).toLocaleDateString()}
@@ -355,7 +516,7 @@ export default function AdminUsers() {
             </div>
 
             {/* Actions Footer */}
-            <div className="border-t border-slate-100 dark:border-sky-950 pt-4 flex gap-3">
+            <div className="border-t border-slate-200 dark:border-sky-950 pt-4 mt-6 flex gap-3">
               {selectedUser.role === "CUSTOMER" && (
                 <button
                   onClick={() => {
@@ -371,8 +532,8 @@ export default function AdminUsers() {
                 onClick={() => toggleUserActive(selectedUser)}
                 className={`flex-1 py-3 text-xs font-bold rounded-xl transition ${
                   selectedUser.isActive
-                    ? "bg-red-50 hover:bg-red-100 dark:bg-red-950/20 text-red-600"
-                    : "bg-green-50 hover:bg-green-100 dark:bg-green-950/20 text-green-600 dark:text-green-400"
+                    ? "bg-red-550/10 hover:bg-red-550/20 text-red-600 dark:text-red-400"
+                    : "bg-green-550/10 hover:bg-green-550/20 text-green-600 dark:text-green-450"
                 }`}
               >
                 {selectedUser.isActive ? "Deactivate User" : "Activate User"}
@@ -388,7 +549,7 @@ export default function AdminUsers() {
         <div className="fixed inset-0 bg-slate-950/45 dark:bg-slate-950/65 backdrop-blur-sm z-50 flex items-center justify-center animate-fadeIn p-4">
           <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-sky-950 rounded-2xl p-6 shadow-2xl flex flex-col gap-5 animate-scaleUp max-h-[90vh] overflow-y-auto">
             
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-sky-950 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-150 dark:border-sky-950 pb-3">
               <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100">Register New User Account</h3>
               <button
                 onClick={() => {
@@ -404,7 +565,7 @@ export default function AdminUsers() {
             <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Role Assignment</label>
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Role Assignment</label>
                   <select
                     {...register("role")}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-sky-950 bg-slate-50/50 dark:bg-slate-800/50 text-sm focus:border-[#0077B6] outline-none transition"
@@ -415,7 +576,7 @@ export default function AdminUsers() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Temp Password</label>
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Temp Password</label>
                   <input
                     type="text"
                     placeholder="e.g. temp123"
@@ -429,7 +590,7 @@ export default function AdminUsers() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Full Name</label>
+                <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Full Name</label>
                 <input
                   type="text"
                   placeholder="John Doe"
@@ -443,7 +604,7 @@ export default function AdminUsers() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Email Address</label>
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Email Address</label>
                   <input
                     type="email"
                     placeholder="john@email.com"
@@ -456,7 +617,7 @@ export default function AdminUsers() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Phone Number</label>
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Phone Number</label>
                   <input
                     type="text"
                     placeholder="1234567890"
@@ -471,7 +632,7 @@ export default function AdminUsers() {
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Area Pincode</label>
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Area Pincode</label>
                   <input
                     type="text"
                     placeholder="700091"
@@ -484,7 +645,7 @@ export default function AdminUsers() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Physical Delivery Address</label>
+                  <label className="text-xs font-semibold text-slate-650 dark:text-slate-400 block">Physical Delivery Address</label>
                   <textarea
                     placeholder="Flat, building details..."
                     rows={2}
@@ -497,14 +658,14 @@ export default function AdminUsers() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-3 border-t border-slate-100 dark:border-sky-950">
+              <div className="flex gap-3 pt-3 border-t border-slate-150 dark:border-sky-950">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddModal(false);
                     reset();
                   }}
-                  className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-50 border border-slate-100 dark:border-sky-950 rounded-xl transition"
+                  className="flex-1 py-3 text-xs font-bold text-slate-500 hover:bg-slate-50 border border-slate-200 dark:border-sky-950 rounded-xl transition"
                 >
                   Cancel
                 </button>

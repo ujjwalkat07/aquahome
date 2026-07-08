@@ -17,10 +17,7 @@ export default withAuth(
         } else if (role === "DELIVERY") {
           return NextResponse.redirect(new URL("/delivery/orders", req.url));
         } else if (role === "CUSTOMER") {
-          if (token.firstLogin) {
-            return NextResponse.redirect(new URL("/user/profile?firstLogin=true", req.url));
-          }
-          return NextResponse.redirect(new URL("/user/order/new", req.url));
+          return NextResponse.redirect(new URL("/login", req.url));
         }
       }
     }
@@ -51,16 +48,11 @@ export default withAuth(
     if (path.startsWith("/admin") && role !== "ADMIN") {
       return NextResponse.redirect(new URL("/admin/login", req.url));
     }
-    if (path.startsWith("/user") && role !== "CUSTOMER") {
+    if (path.startsWith("/user")) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
     if (path.startsWith("/delivery") && role !== "DELIVERY") {
       return NextResponse.redirect(new URL("/delivery/login", req.url));
-    }
-
-    // Force customer to change password on first login
-    if (role === "CUSTOMER" && token.firstLogin && path !== "/user/profile") {
-      return NextResponse.redirect(new URL("/user/profile?firstLogin=true", req.url));
     }
 
     return NextResponse.next();

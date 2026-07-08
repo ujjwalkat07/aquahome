@@ -38,6 +38,10 @@ export async function sendSMS({ to, message }: { to: string; message: string }) 
   console.log(`[STUB SMS] To: ${to} | Message: ${message}`);
 }
 
+export async function sendWhatsApp({ to, message }: { to: string; message: string }) {
+  console.log(`\n--- [STUB WHATSAPP SEND] ---\nTo: ${to}\nMessage:\n${message}\n----------------------------\n`);
+}
+
 function getHtmlTemplate(title: string, message: string): string {
   return `
 <!DOCTYPE html>
@@ -160,13 +164,15 @@ export async function notifyUser({
   title,
   message,
   email,
-  phone
+  phone,
+  whatsAppMessage
 }: {
   userId: string;
   title: string;
   message: string;
   email?: string;
   phone?: string;
+  whatsAppMessage?: string;
 }) {
   try {
     // 1. In-app notification
@@ -193,6 +199,14 @@ export async function notifyUser({
       await sendSMS({
         to: phone,
         message: `${title}: ${message}`
+      });
+    }
+
+    // 4. WhatsApp notification
+    if (phone && whatsAppMessage) {
+      await sendWhatsApp({
+        to: phone,
+        message: whatsAppMessage
       });
     }
   } catch (error) {
