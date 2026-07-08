@@ -87,13 +87,32 @@ export default function AdminOrders() {
     try {
       // Fetch orders
       const ordRes = await fetch("/api/orders");
-      const ordData = await ordRes.json();
-      setOrders(ordData);
+      if (ordRes.ok) {
+        const ordData = await ordRes.json();
+        if (Array.isArray(ordData)) {
+          setOrders(ordData);
+        } else {
+          setOrders([]);
+          console.error("Invalid orders format received:", ordData);
+        }
+      } else {
+        const errData = await ordRes.json().catch(() => ({}));
+        setOrders([]);
+        toast.error(errData.error || "Failed to load orders.");
+      }
 
       // Fetch delivery partners for assignment dropdowns
       const partRes = await fetch("/api/admin/users?role=DELIVERY");
-      const partData = await partRes.json();
-      setDeliveryPartners(partData);
+      if (partRes.ok) {
+        const partData = await partRes.json();
+        if (Array.isArray(partData)) {
+          setDeliveryPartners(partData);
+        } else {
+          setDeliveryPartners([]);
+        }
+      } else {
+        setDeliveryPartners([]);
+      }
     } catch (err) {
       toast.error("Failed to load operations data.");
     } finally {
@@ -408,7 +427,7 @@ export default function AdminOrders() {
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{orderDate} • {order.deliveryTimeSlot}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5" suppressHydrationWarning>{orderDate} • {order.deliveryTimeSlot}</p>
                       </td>
                       <td className="p-4">
                         <p className="font-bold text-slate-800 dark:text-slate-200">{order.user.name}</p>

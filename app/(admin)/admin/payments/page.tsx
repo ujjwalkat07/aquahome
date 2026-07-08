@@ -421,7 +421,7 @@ export default function AdminPayments() {
                         <td className="p-4 font-bold text-slate-700 dark:text-slate-300">
                           ₹{p.amount.toFixed(2)}
                         </td>
-                        <td className="p-4 text-slate-500">
+                        <td className="p-4 text-slate-500" suppressHydrationWarning>
                           {new Date(p.createdAt).toLocaleDateString()}
                         </td>
                         <td className="p-4">

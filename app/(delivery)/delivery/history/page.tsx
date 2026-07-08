@@ -121,9 +121,9 @@ export default function DeliveryHistory() {
                   </p>
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-50 dark:border-sky-950/30 pt-2 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-                    <span className="flex items-center gap-1"><Calendar size={13} /> Delivered {deliveryDate}</span>
-                    <span className="flex items-center gap-1"><Clock size={13} /> Time: {deliveryTime}</span>
-                    <span className="text-slate-700 dark:text-slate-300 font-extrabold uppercase text-[10px]">{bottleCount} bottles</span>
+                    <span className="flex items-center gap-1" suppressHydrationWarning><Calendar size={13} /> Delivered {deliveryDate}</span>
+                    <span className="flex items-center gap-1" suppressHydrationWarning><Clock size={13} /> Time: {deliveryTime}</span>
+                    <span className="text-slate-700 dark:text-slate-350 font-extrabold uppercase text-[10px]">{bottleCount} bottles</span>
                   </div>
                 </div>
 

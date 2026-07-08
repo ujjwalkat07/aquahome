@@ -150,10 +150,18 @@ export default function AdminUsers() {
       const res = await fetch("/api/admin/users");
       if (res.ok) {
         const data = await res.json();
-        setUsers(data);
+        if (Array.isArray(data)) {
+          setUsers(data);
+        } else {
+          setUsers([]);
+          console.error("Invalid users data format received:", data);
+        }
+      } else {
+        setUsers([]);
       }
     } catch (err) {
       toast.error("Failed to load users list.");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -627,7 +635,7 @@ export default function AdminUsers() {
                   <span className="font-bold text-slate-700 dark:text-slate-300 block uppercase tracking-wider text-[10px]">Administrative Details</span>
                   <div className="flex justify-between p-2.5 border border-slate-150 dark:border-sky-950 rounded-xl">
                     <span className="text-slate-500">Registered On:</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200" suppressHydrationWarning>
                       {new Date(selectedUser.createdAt).toLocaleDateString()}
                     </span>
                   </div>

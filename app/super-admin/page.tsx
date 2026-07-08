@@ -932,7 +932,7 @@ export default function SuperAdminDashboard() {
                           </p>
                           <p className="flex justify-between border-b border-slate-200/50 dark:border-sky-950 pb-2">
                             <span className="text-slate-400">Registration Date:</span>
-                            <span className="font-bold text-slate-700 dark:text-slate-300">
+                            <span className="font-bold text-slate-700 dark:text-slate-300" suppressHydrationWarning>
                               {new Date(detailsData.admin.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
                             </span>
                           </p>
@@ -964,7 +964,7 @@ export default function SuperAdminDashboard() {
                             <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                               <td className="p-3 font-bold text-slate-800 dark:text-slate-200">{c.name}</td>
                               <td className="p-3 text-slate-600 dark:text-slate-400">{c.email} • {c.phone}</td>
-                              <td className="p-3 text-slate-500">{new Date(c.createdAt).toLocaleDateString()}</td>
+                              <td className="p-3 text-slate-500" suppressHydrationWarning>{new Date(c.createdAt).toLocaleDateString()}</td>
                               <td className="p-3 text-slate-600 dark:text-slate-400">{c.address}</td>
                               <td className="p-3">
                                 <span className={`font-bold ${c.isActive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
@@ -1001,7 +1001,7 @@ export default function SuperAdminDashboard() {
                             <tr key={dp.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                               <td className="p-3 font-bold text-slate-800 dark:text-slate-200">{dp.name}</td>
                               <td className="p-3 text-slate-600 dark:text-slate-400">{dp.email} • {dp.phone}</td>
-                              <td className="p-3 text-slate-500">{new Date(dp.createdAt).toLocaleDateString()}</td>
+                              <td className="p-3 text-slate-500" suppressHydrationWarning>{new Date(dp.createdAt).toLocaleDateString()}</td>
                               <td className="p-3 text-slate-600 dark:text-slate-400">{dp.address}</td>
                               <td className="p-3">
                                 <span className={`font-bold ${dp.isActive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
